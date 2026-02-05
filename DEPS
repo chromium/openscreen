@@ -413,7 +413,13 @@ deps = {
     'url': Var('quiche_git') + '/googleurl.git' +
       '@' + '94ff147fe0b96b4cca5d6d316b9af6210c0b8051',  #2025-11-11
     'condition': 'not build_with_chromium',
-  }
+  },
+
+  'third_party/perfetto/src': {
+    'url': Var('chromium_git') + '/external/github.com/google/perfetto.git' +
+      '@' + '1d9994a93c6ada2fb261dc72984fa07683a6c86e',
+    'condition': 'not build_with_chromium',
+  },
 }
 
 hooks = [

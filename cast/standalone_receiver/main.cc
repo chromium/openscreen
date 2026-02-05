@@ -29,6 +29,10 @@
 #include "util/trace_logging.h"
 #include "util/uuid.h"
 
+#if defined(USE_PERFETTO)
+#include "platform/impl/perfetto_trace_logging_platform.h"
+#endif
+
 namespace openscreen::cast {
 namespace {
 
@@ -69,12 +73,13 @@ options:
     -q, --disable-dscp: Disable DSCP packet prioritization, used for QoS over
                         the UDP socket connection.
 
-    -t, --tracing: Enable performance tracing logging.
+    -t, --tracing: Enable text based performance trace logging.
 
     -v, --verbose: Enable verbose logging.
 
     -x, --disable-discovery: Disable discovery.
 
+    -P, --perfetto: Enable Perfetto based performance trace logging.
 )";
 
   std::cerr << StringFormat(kTemplate, argv0);
@@ -126,7 +131,7 @@ struct Arguments {
   bool should_generate_credentials = false;
   std::string model_name = "cast_standalone_receiver";
   std::string private_key_path;
-  std::unique_ptr<TextTraceLoggingPlatform> trace_logger;
+  std::unique_ptr<TraceLoggingPlatform> trace_logger;
   bool is_verbose = false;
 };
 
@@ -146,11 +151,14 @@ std::optional<Arguments> ParseArgs(int argc, char* argv[]) {
       {"private-key", required_argument, nullptr, 'p'},
       {"tracing", no_argument, nullptr, 't'},
       {"verbose", no_argument, nullptr, 'v'},
+#if defined(USE_PERFETTO)
+      {"perfetto", no_argument, nullptr, 'P'},
+#endif
       {nullptr, 0, nullptr, 0}};
 
   Arguments args;
   int ch = -1;
-  while ((ch = getopt_long(argc, argv, "d:f:ghm:p:qtvx", kArgumentOptions,
+  while ((ch = getopt_long(argc, argv, "d:f:ghm:p:qtvxP", kArgumentOptions,
                            nullptr)) != -1) {
     switch (ch) {
       case 'd':
@@ -182,6 +190,11 @@ std::optional<Arguments> ParseArgs(int argc, char* argv[]) {
       case 'x':
         args.enable_discovery = false;
         break;
+#if defined(USE_PERFETTO)
+      case 'P':
+        args.trace_logger = std::make_unique<PerfettoTraceLoggingPlatform>();
+        break;
+#endif
     }
   }
 

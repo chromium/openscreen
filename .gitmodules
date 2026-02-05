@@ -72,3 +72,7 @@
 	path = third_party/googleurl/src
 	url = https://quiche.googlesource.com/googleurl
 	gclient-condition = not build_with_chromium
+[submodule "third_party/perfetto/src"]
+	path = third_party/perfetto/src
+	url = https://chromium.googlesource.com/external/github.com/google/perfetto
+	gclient-condition = not build_with_chromium

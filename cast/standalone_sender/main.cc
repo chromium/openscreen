@@ -33,6 +33,10 @@
 #include "util/string_util.h"
 #include "util/stringprintf.h"
 
+#if defined(USE_PERFETTO)
+#include "platform/impl/perfetto_trace_logging_platform.h"
+#endif
+
 namespace openscreen::cast {
 namespace {
 
@@ -82,9 +86,11 @@ options:
 
     -r, --remoting: Enable remoting content instead of mirroring.
 
-    -t, --tracing: Enable performance tracing logging.
+    -t, --tracing: Enable text based performance trace logging.
 
     -v, --verbose: Enable verbose logging.
+
+    -P, --perfetto: Enable perfetto based performance trace logging.
 
 )";
 
@@ -139,7 +145,7 @@ struct Arguments {
   bool use_remoting = false;
   bool is_verbose = false;
   VideoCodec codec = VideoCodec::kVp8;
-  std::unique_ptr<TextTraceLoggingPlatform> trace_logger;
+  std::unique_ptr<TraceLoggingPlatform> trace_logger;
   bool enable_dscp = true;
 };
 
@@ -158,12 +164,15 @@ std::optional<Arguments> ParseArgs(int argc, char* argv[]) {
       {"disable-dscp", no_argument, nullptr, 'q'},
       {"remoting", no_argument, nullptr, 'r'},
       {"tracing", no_argument, nullptr, 't'},
+#if defined(USE_PERFETTO)
+      {"perfetto", no_argument, nullptr, 'P'},
+#endif
       {"verbose", no_argument, nullptr, 'v'},
       {nullptr, 0, nullptr, 0}};
 
   Arguments args;
   int ch = -1;
-  while ((ch = getopt_long(argc, argv, "ac:d:hm:nqrtv", kArgumentOptions,
+  while ((ch = getopt_long(argc, argv, "ac:d:hm:nqrtvP", kArgumentOptions,
                            nullptr)) != -1) {
     switch (ch) {
       case 'a':
@@ -206,6 +215,11 @@ std::optional<Arguments> ParseArgs(int argc, char* argv[]) {
           return std::nullopt;
         }
         break;
+#if defined(USE_PERFETTO)
+      case 'P':
+        args.trace_logger = std::make_unique<PerfettoTraceLoggingPlatform>();
+        break;
+#endif
     }
   }
 
