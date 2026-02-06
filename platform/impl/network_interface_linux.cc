@@ -136,11 +136,14 @@ std::optional<IPAddress> GetIPAddressOrNull(struct rtattr* rta,
       }
     } else if (rta->rta_type == IFA_ADDRESS) {
       OSP_CHECK_EQ(expected_address_size, RTA_PAYLOAD(rta));
-      address = IPAddress(version, static_cast<uint8_t*>(RTA_DATA(rta)));
+      address =
+          IPAddress(version, std::span(static_cast<uint8_t*>(RTA_DATA(rta)),
+                                       expected_address_size));
     } else if (rta->rta_type == IFA_LOCAL) {
       OSP_CHECK_EQ(expected_address_size, RTA_PAYLOAD(rta));
       have_local = true;
-      local = IPAddress(version, static_cast<uint8_t*>(RTA_DATA(rta)));
+      local = IPAddress(version, std::span(static_cast<uint8_t*>(RTA_DATA(rta)),
+                                           expected_address_size));
     }
   }
   return have_local ? local : address;

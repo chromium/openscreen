@@ -5,11 +5,13 @@
 #ifndef PLATFORM_BASE_IP_ADDRESS_H_
 #define PLATFORM_BASE_IP_ADDRESS_H_
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <ostream>
 #include <span>
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 #include "platform/base/error.h"
@@ -40,31 +42,23 @@ class IPAddress {
 
   // `bytes` contains 4 octets for IPv4, or 8 hextets (16 bytes of big-endian
   // shorts) for IPv6.
-  IPAddress(Version version, const uint8_t* bytes);
+  // TODO(jophba): delete once usage is removed in Chromium's network_util.cc.
+  inline IPAddress(Version version, const uint8_t* bytes) : version_(version) {
+    std::copy_n(bytes, size(), bytes_.begin());
+  }
+
+  IPAddress(Version version, std::span<const uint8_t> bytes);
 
   // IPv4 constructors (IPAddress from 4 octets).
-  explicit constexpr IPAddress(const std::array<uint8_t, 4>& bytes)
+  explicit constexpr IPAddress(std::span<const uint8_t, 4> bytes)
       : version_(Version::kV4),
         bytes_{{bytes[0], bytes[1], bytes[2], bytes[3]}} {}
-
-  explicit constexpr IPAddress(const uint8_t (&b)[4])
-      : version_(Version::kV4), bytes_{{b[0], b[1], b[2], b[3]}} {}
 
   constexpr IPAddress(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4)
       : version_(Version::kV4), bytes_{{b1, b2, b3, b4}} {}
 
   // IPv6 constructors (IPAddress from 8 hextets).
-  explicit constexpr IPAddress(const std::array<uint16_t, 8>& hextets)
-      : IPAddress(hextets[0],
-                  hextets[1],
-                  hextets[2],
-                  hextets[3],
-                  hextets[4],
-                  hextets[5],
-                  hextets[6],
-                  hextets[7]) {}
-
-  explicit constexpr IPAddress(const uint16_t (&hextets)[8])
+  explicit constexpr IPAddress(std::span<const uint16_t, 8> hextets)
       : IPAddress(hextets[0],
                   hextets[1],
                   hextets[2],
@@ -131,6 +125,7 @@ class IPAddress {
   explicit operator bool() const;
 
   Version version() const { return version_; }
+  size_t size() const { return (version_ == Version::kV4) ? kV4Size : kV6Size; }
   bool IsV4() const { return version_ == Version::kV4; }
   bool IsV6() const { return version_ == Version::kV6; }
 
@@ -144,19 +139,24 @@ class IPAddress {
   // These methods assume `x` is the appropriate size, but due to various
   // callers' casting needs we can't check them like the constructors above.
   // Callers should instead make any necessary checks themselves.
-  void CopyToV4(uint8_t* x) const;
-  void CopyToV6(uint8_t* x) const;
+  void CopyTo(std::span<uint8_t> bytes) const;
+
+  // TODO(jophba): delete once usage is removed in Chromium's network_util.cc.
+  inline void CopyToV4(uint8_t* x) const { CopyTo(std::span(x, kV4Size)); }
+  inline void CopyToV6(uint8_t* x) const { CopyTo(std::span(x, kV6Size)); }
 
   // In some instances, we want direct access to the underlying byte storage,
   // in order to avoid making multiple copies.
-  const uint8_t* bytes() const { return bytes_.data(); }
+  std::span<const uint8_t> bytes() const {
+    return {bytes_.data(), (version_ == Version::kV4) ? kV4Size : kV6Size};
+  }
 
   // Parses a text representation of an IPv4 address (e.g. "192.168.0.1") or an
   // IPv6 address (e.g. "abcd::1234").
-  static ErrorOr<IPAddress> Parse(const std::string& s);
+  static ErrorOr<IPAddress> Parse(std::string_view s);
 
  private:
-  friend ErrorOr<IPAddress> ParseV6(const std::string& s);
+  friend ErrorOr<IPAddress> ParseV6(std::string_view s);
 
   Version version_;
   std::array<uint8_t, 16> bytes_;
@@ -175,7 +175,7 @@ struct IPEndpoint {
 
   // Parses a text representation of an IPv4/IPv6 address and port (e.g.
   // "192.168.0.1:8080" or "[abcd::1234]:8080").
-  static ErrorOr<IPEndpoint> Parse(const std::string& s);
+  static ErrorOr<IPEndpoint> Parse(std::string_view s);
 
   std::string ToString() const;
 };

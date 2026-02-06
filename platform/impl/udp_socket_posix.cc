@@ -26,6 +26,7 @@
 #include "platform/api/network_interface.h"
 #include "platform/api/task_runner.h"
 #include "platform/base/error.h"
+#include "platform/impl/socket_address_posix.h"
 #include "platform/impl/udp_socket_reader_posix.h"
 #include "util/osp_logging.h"
 
@@ -142,9 +143,7 @@ IPEndpoint UdpSocketPosix::GetLocalEndpoint() const {
                         reinterpret_cast<struct sockaddr*>(&address),
                         &address_len) == 0) {
           OSP_CHECK_EQ(address.sin_family, AF_INET);
-          local_endpoint_.address =
-              IPAddress(IPAddress::Version::kV4,
-                        reinterpret_cast<uint8_t*>(&address.sin_addr.s_addr));
+          local_endpoint_.address = GetIPAddressFromSockAddr(address);
           local_endpoint_.port = ntohs(address.sin_port);
         }
         break;
@@ -157,10 +156,7 @@ IPEndpoint UdpSocketPosix::GetLocalEndpoint() const {
                         reinterpret_cast<struct sockaddr*>(&address),
                         &address_len) == 0) {
           OSP_CHECK_EQ(address.sin6_family, AF_INET6);
-          local_endpoint_.address =
-              IPAddress(std::span<const uint8_t, 16>(
-                            reinterpret_cast<uint8_t*>(&address.sin6_addr), 16),
-                        address.sin6_scope_id);
+          local_endpoint_.address = GetIPAddressFromSockAddr(address);
           local_endpoint_.port = ntohs(address.sin6_port);
         }
         break;
@@ -199,11 +195,7 @@ void UdpSocketPosix::Bind() {
   bool is_bound = false;
   switch (local_endpoint_.address.version()) {
     case UdpSocket::Version::kV4: {
-      struct sockaddr_in address {};
-      address.sin_family = AF_INET;
-      address.sin_port = htons(local_endpoint_.port);
-      local_endpoint_.address.CopyToV4(
-          reinterpret_cast<uint8_t*>(&address.sin_addr.s_addr));
+      struct sockaddr_in address = ToSockAddrIn(local_endpoint_);
       if (bind(handle_.fd, reinterpret_cast<struct sockaddr*>(&address),
                sizeof(address)) != -1) {
         is_bound = true;
@@ -211,15 +203,7 @@ void UdpSocketPosix::Bind() {
     } break;
 
     case UdpSocket::Version::kV6: {
-      struct sockaddr_in6 address {};
-      address.sin6_family = AF_INET6;
-      address.sin6_port = htons(local_endpoint_.port);
-      local_endpoint_.address.CopyToV6(
-          reinterpret_cast<uint8_t*>(&address.sin6_addr));
-      if (local_endpoint_.address.IsLinkLocal() &&
-          local_endpoint_.address.GetScopeId() != 0) {
-        address.sin6_scope_id = local_endpoint_.address.GetScopeId();
-      }
+      struct sockaddr_in6 address = ToSockAddrIn6(local_endpoint_);
       if (bind(handle_.fd, reinterpret_cast<struct sockaddr*>(&address),
                sizeof(address)) != -1) {
         is_bound = true;
@@ -316,8 +300,8 @@ void UdpSocketPosix::JoinMulticastGroup(const IPAddress& address,
 
       static_assert(sizeof(multicast_properties.imr_multiaddr) == 4u,
                     "IPv4 address requires exactly 4 bytes");
-      address.CopyToV4(
-          reinterpret_cast<uint8_t*>(&multicast_properties.imr_multiaddr));
+      address.CopyTo(std::span<uint8_t>(
+          reinterpret_cast<uint8_t*>(&multicast_properties.imr_multiaddr), 4));
       if (setsockopt(handle_.fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
                      &multicast_properties,
                      sizeof(multicast_properties)) == -1) {
@@ -341,8 +325,9 @@ void UdpSocketPosix::JoinMulticastGroup(const IPAddress& address,
       };
       static_assert(sizeof(multicast_properties.ipv6mr_multiaddr) == 16u,
                     "IPv6 address requires exactly 16 bytes");
-      address.CopyToV6(
-          reinterpret_cast<uint8_t*>(&multicast_properties.ipv6mr_multiaddr));
+      address.CopyTo(std::span<uint8_t>(
+          reinterpret_cast<uint8_t*>(&multicast_properties.ipv6mr_multiaddr),
+          16));
       // Portability note: All platforms support IPV6_JOIN_GROUP, which is
       // synonymous with IPV6_ADD_MEMBERSHIP.
       if (setsockopt(handle_.fd, IPPROTO_IPV6, IPV6_JOIN_GROUP,
@@ -369,27 +354,16 @@ Error ChooseError(decltype(errno) posix_errno, Error::Code hard_error_code) {
   return Error(hard_error_code, strerror(errno));
 }
 
-IPAddress GetIPAddressFromSockAddr(const sockaddr_in& sa) {
-  static_assert(IPAddress::kV4Size == sizeof(sa.sin_addr.s_addr),
-                "IPv4 address size mismatch.");
-  return IPAddress(IPAddress::Version::kV4,
-                   reinterpret_cast<const uint8_t*>(&sa.sin_addr.s_addr));
-}
-
 IPAddress GetIPAddressFromPktInfo(const in_pktinfo& pktinfo) {
   static_assert(IPAddress::kV4Size == sizeof(pktinfo.ipi_addr),
                 "IPv4 address size mismatch.");
   return IPAddress(IPAddress::Version::kV4,
-                   reinterpret_cast<const uint8_t*>(&pktinfo.ipi_addr));
+                   std::span<const uint8_t>(
+                       reinterpret_cast<const uint8_t*>(&pktinfo.ipi_addr), 4));
 }
 
 uint16_t GetPortFromFromSockAddr(const sockaddr_in& sa) {
   return ntohs(sa.sin_port);
-}
-
-IPAddress GetIPAddressFromSockAddr(const sockaddr_in6& sa) {
-  return IPAddress(std::span<const uint8_t, 16>(sa.sin6_addr.s6_addr, 16),
-                   sa.sin6_scope_id);
 }
 
 IPAddress GetIPAddressFromPktInfo(const in6_pktinfo& pktinfo) {
@@ -561,7 +535,8 @@ void UdpSocketPosix::SendMessage(ByteView data, const IPEndpoint& dest) {
       struct sockaddr_in sa {};
       sa.sin_family = AF_INET;
       sa.sin_port = htons(dest.port);
-      dest.address.CopyToV4(reinterpret_cast<uint8_t*>(&sa.sin_addr.s_addr));
+      dest.address.CopyTo(std::span<uint8_t>(
+          reinterpret_cast<uint8_t*>(&sa.sin_addr.s_addr), 4));
       msg.msg_name = &sa;
       msg.msg_namelen = sizeof(sa);
       num_bytes_sent = sendmsg(handle_.fd, &msg, 0);
@@ -572,7 +547,8 @@ void UdpSocketPosix::SendMessage(ByteView data, const IPEndpoint& dest) {
       struct sockaddr_in6 sa {};
       sa.sin6_family = AF_INET6;
       sa.sin6_port = htons(dest.port);
-      dest.address.CopyToV6(reinterpret_cast<uint8_t*>(&sa.sin6_addr.s6_addr));
+      dest.address.CopyTo(std::span<uint8_t>(
+          reinterpret_cast<uint8_t*>(&sa.sin6_addr.s6_addr), 16));
       if (dest.address.IsLinkLocal() && dest.address.GetScopeId() != 0) {
         sa.sin6_scope_id = dest.address.GetScopeId();
       }
