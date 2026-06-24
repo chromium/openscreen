@@ -138,6 +138,59 @@ TEST(CaptureRecommendationsTest, OnlyInvalidAspectRatioConstraint) {
   EXPECT_EQ(kDefaultRecommendations, GetRecommendations(answer));
 }
 
+// A high minimum bit rate combined with a small display (which limits the
+// maximum) must not yield an inverted bit rate range.
+TEST(CaptureRecommendationsTest, ClampsInvertedVideoBitRateRange) {
+  Answer answer;
+  answer.display = DisplayDescription{
+      Dimensions{320, 240, SimpleFraction{30, 1}}, std::nullopt, std::nullopt};
+  answer.constraints = Constraints{
+      {48000, 2, 32000, 256000, std::chrono::seconds(1)},
+      {6000000, std::nullopt, Dimensions{3840, 2160, SimpleFraction{30, 1}},
+       8000000 /* min_bit_rate */, 9000000 /* max_bit_rate */,
+       std::chrono::seconds(1)}};
+
+  const Recommendations recommendations = GetRecommendations(answer);
+  EXPECT_LE(recommendations.video.bit_rate_limits.minimum,
+            recommendations.video.bit_rate_limits.maximum);
+}
+
+// A minimum resolution larger than the display must not yield a minimum
+// resolution that exceeds the maximum.
+TEST(CaptureRecommendationsTest, ClampsMinResolutionExceedingMaximum) {
+  Answer answer;
+  answer.display = DisplayDescription{
+      Dimensions{640, 360, SimpleFraction{30, 1}}, std::nullopt, std::nullopt};
+  answer.constraints = Constraints{
+      {48000, 2, 32000, 256000, std::chrono::seconds(1)},
+      {6000000,
+       Dimensions{1280, 720, SimpleFraction{30, 1}} /* min_resolution */,
+       Dimensions{3840, 2160, SimpleFraction{30, 1}}, 300000, 6000000,
+       std::chrono::seconds(1)}};
+
+  const Recommendations recommendations = GetRecommendations(answer);
+  EXPECT_TRUE(recommendations.video.maximum.ToResolution().IsSupersetOf(
+      recommendations.video.minimum));
+}
+
+// Clamping must be independent for each dimension, to avoid unintentionally
+// increasing one dimension when the other is clamped.
+TEST(CaptureRecommendationsTest, ClampsMinResolutionDimensionsIndependently) {
+  Answer answer;
+  answer.display = DisplayDescription{
+      Dimensions{1920, 720, SimpleFraction{30, 1}}, std::nullopt, std::nullopt};
+  answer.constraints = Constraints{
+      {48000, 2, 32000, 256000, std::chrono::seconds(1)},
+      {6000000,
+       Dimensions{1280, 1080, SimpleFraction{30, 1}} /* min_resolution */,
+       Dimensions{3840, 2160, SimpleFraction{30, 1}}, 300000, 6000000,
+       std::chrono::seconds(1)}};
+
+  const Recommendations recommendations = GetRecommendations(answer);
+  EXPECT_EQ(1280, recommendations.video.minimum.width);
+  EXPECT_EQ(720, recommendations.video.minimum.height);
+}
+
 TEST(CaptureRecommendationsTest, FixedAspectRatioConstraint) {
   Recommendations expected = kDefaultRecommendations;
   expected.video.minimum = Resolution{320, 240};

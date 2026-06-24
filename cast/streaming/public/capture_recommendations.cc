@@ -102,6 +102,21 @@ void ApplyConstraints(const Constraints& constraints,
   }
 }
 
+// The receiver's video constraints, even when each is individually valid, can
+// intersect with the display description to produce an inverted range: a
+// minimum bit rate above the display-limited maximum, or a minimum resolution
+// larger than the display. (Audio cannot invert: AudioConstraints::IsValid()
+// already requires max_bit_rate >= min_bit_rate.) Resolve any such
+// contradiction in favor of the maximum, which reflects what the
+// receiver/display can actually handle.
+void ClampVideoToWellOrderedRanges(Video& video) {
+  video.bit_rate_limits.minimum =
+      std::min(video.bit_rate_limits.minimum, video.bit_rate_limits.maximum);
+  video.minimum.width = std::min(video.minimum.width, video.maximum.width);
+  video.minimum.height =
+      std::min(video.minimum.height, video.maximum.height);
+}
+
 }  // namespace
 
 bool BitRateLimits::operator==(const BitRateLimits& other) const {
@@ -134,6 +149,7 @@ Recommendations GetRecommendations(const Answer& answer) {
   if (answer.constraints.has_value() && answer.constraints->IsValid()) {
     ApplyConstraints(answer.constraints.value(), &recommendations);
   }
+  ClampVideoToWellOrderedRanges(recommendations.video);
   return recommendations;
 }
 
