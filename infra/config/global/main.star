@@ -167,6 +167,30 @@ _siso = struct(
     ),
 )
 
+def assemble_gn_args(args):
+    """Assembles a list of GN argument strings from a dictionary.
+
+    Args:
+      args: A dictionary of GN argument names and values.
+
+    Returns:
+      A list of "key=value" strings formatted for GN.
+    """
+    gn_args_list = []
+    for k in sorted(args.keys()):
+        v = args[k]
+        if type(v) == "bool":
+            gn_args_list.append("{}={}".format(k, "true" if v else "false"))
+        elif type(v) == "string":
+            v_stripped = v.strip('"')
+            if v_stripped.lower() in ("true", "false"):
+                gn_args_list.append("{}={}".format(k, v_stripped.lower()))
+            else:
+                gn_args_list.append('{}="{}"'.format(k, v_stripped))
+        else:
+            gn_args_list.append("{}={}".format(k, v))
+    return gn_args_list
+
 def get_properties(
         target_cpu,
         is_debug = True,
@@ -199,35 +223,18 @@ def get_properties(
       is_ci: If set, it adds is_ci flag to the properties.
 
     Returns:
-        A collection of GN properties for the build system.
+        A collection of properties for the build system.
     """
     properties = {
-        "clang_use_chrome_plugins": False,
-        "target_cpu": target_cpu,
         "$recipe_engine/swarming": {
             "server": "https://chromium-swarm.appspot.com",
         },
+        "target_cpu": target_cpu,
     }
-    if not is_debug:
-        properties["is_debug"] = False
-    if is_gcc:
-        properties["is_clang"] = False
-        properties["use_custom_libcxx"] = False
-        properties["enable_rust"] = False
-    if is_asan:
-        properties["is_asan"] = True
-    if is_msan:
-        properties["is_msan"] = True
-    if is_tsan:
-        properties["is_tsan"] = True
-    if use_coverage:
-        properties["use_coverage"] = True
-    if cast_receiver:
-        # TODO(crbug.com/337080120): enable receiver-side dependencies.
-        # properties["have_ffmpeg"] = True
-        # properties["have_libsdl2"] = True
-        properties["have_libopus"] = True
-        properties["have_libvpx"] = True
+
+    if is_ci:
+        properties["is_ci"] = is_ci
+
     if chromium:
         properties["builder_group"] = "client.openscreen.chromium"
         properties["clang_use_chrome_plugins"] = True
@@ -238,16 +245,47 @@ def get_properties(
             "enable_cloud_trace": True,
             "project": _siso.project.DEFAULT_UNTRUSTED,
         }
+        return properties
 
     if is_presubmit:
+        properties["clang_use_chrome_plugins"] = False
         properties["repo_name"] = "openscreen"
         properties["runhooks"] = "true"
+        return properties
+
+    # Open Screen standalone builders pass GN arguments as a list of strings.
+    gn_args_dict = {
+        "clang_use_chrome_plugins": False,
+        "target_cpu": target_cpu,
+    }
+    if not is_debug:
+        gn_args_dict["is_debug"] = False
+    if is_gcc:
+        gn_args_dict["is_clang"] = False
+        gn_args_dict["use_custom_libcxx"] = False
+        gn_args_dict["enable_rust"] = False
+    if is_asan:
+        gn_args_dict["is_asan"] = True
+        properties["is_asan"] = True
+    if is_msan:
+        gn_args_dict["is_msan"] = True
+    if is_tsan:
+        gn_args_dict["is_tsan"] = True
+    if use_coverage:
+        gn_args_dict["use_coverage"] = True
+        properties["use_coverage"] = True
+    if cast_receiver:
+        # TODO(crbug.com/337080120): enable receiver-side dependencies.
+        # gn_args_dict["have_ffmpeg"] = True
+        # gn_args_dict["have_libsdl2"] = True
+        gn_args_dict["have_libopus"] = True
+        gn_args_dict["have_libvpx"] = True
 
     if is_component_build != None:
-        properties["is_component_build"] = is_component_build
+        gn_args_dict["is_component_build"] = is_component_build
 
-    if is_ci:
-        properties["is_ci"] = is_ci
+    properties["gn_args"] = assemble_gn_args(gn_args_dict)
+
     return properties
 
 def builder(builder_type, name, os, cpu, properties):
