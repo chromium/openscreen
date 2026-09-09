@@ -198,7 +198,7 @@ def get_properties(
         is_asan = False,
         is_tsan = False,
         is_msan = False,
-        use_coverage = False,
+        use_clang_coverage = False,
         cast_receiver = False,
         chromium = False,
         is_presubmit = False,
@@ -214,7 +214,7 @@ def get_properties(
       is_asan: if True, this is an address sanitizer build.
       is_msan: if True, this is a memory sanitizer build.
       is_tsan: if True, this is a thread sanitizer build.
-      use_coverage: if True, this is a code coverage build.
+      use_clang_coverage: if True, this is a code coverage build.
       cast_receiver: if True, this build should include the cast standalone
         sender and receiver binaries.
       chromium: if True, the build is for use in an embedder, such as Chrome.
@@ -271,9 +271,11 @@ def get_properties(
         gn_args_dict["is_msan"] = True
     if is_tsan:
         gn_args_dict["is_tsan"] = True
-    if use_coverage:
-        gn_args_dict["use_coverage"] = True
-        properties["use_coverage"] = True
+    if use_clang_coverage:
+        gn_args_dict["use_clang_coverage"] = True
+        properties["use_clang_coverage"] = True
+        if not is_ci:
+            gn_args_dict["coverage_instrumentation_input_file"] = "//.code-coverage/files_to_instrument.txt"
     if cast_receiver:
         # TODO(crbug.com/337080120): enable receiver-side dependencies.
         # gn_args_dict["have_ffmpeg"] = True
@@ -348,7 +350,6 @@ def builder(builder_type, name, os, cpu, properties):
         if name in [
             "linux_arm64",
             "linux_arm64_cast_receiver",
-            "linux_x64_coverage",
             "win_x64",
             "chromium_win_x64",
         ]:
@@ -425,17 +426,27 @@ try_and_ci_builders(
     "x86-64",
     get_properties("arm64", cast_receiver = True, is_component_build = False),
 )
-try_and_ci_builders(
-    "linux_x64_coverage",
-    LINUX_VERSION,
-    "x86-64",
-    get_properties("x64", use_coverage = True),
-)
-try_and_ci_builders(
+try_builder(
     "linux_x64",
     LINUX_VERSION,
     "x86-64",
-    get_properties("x64", is_asan = True),
+    get_properties(
+        "x64",
+        is_asan = True,
+        use_clang_coverage = True,
+        is_ci = False,
+    ),
+)
+ci_builder(
+    "linux_x64",
+    LINUX_VERSION,
+    "x86-64",
+    get_properties(
+        "x64",
+        is_asan = True,
+        use_clang_coverage = True,
+        is_ci = True,
+    ),
 )
 try_and_ci_builders(
     "linux_x64_gcc",
