@@ -433,7 +433,8 @@ try_builder(
     get_properties(
         "x64",
         is_asan = True,
-        use_clang_coverage = True,
+        # TODO(crbug.com/155812080): Re-enable once recipe CL 8351276 lands.
+        use_clang_coverage = False,
         is_ci = False,
     ),
 )
