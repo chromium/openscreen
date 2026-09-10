@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <poll.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -17,16 +18,11 @@ namespace openscreen {
 namespace {
 constexpr int kDefaultMaxBacklogSize = 64;
 
-// Call Select with no timeout, so that it doesn't block. Then use the result
+// Call poll with no timeout, so that it doesn't block. Then use the result
 // to determine if any connection is pending.
 bool IsConnectionPending(int fd) {
-  fd_set handle_set{};
-  FD_ZERO(&handle_set);
-  FD_SET(fd, &handle_set);
-  struct timeval tv {
-    0
-  };
-  return select(fd + 1, &handle_set, nullptr, nullptr, &tv) > 0;
+  struct pollfd pfd{.fd = fd, .events = POLLIN, .revents = 0};
+  return poll(&pfd, 1, 0) > 0;
 }
 }  // namespace
 

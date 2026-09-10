@@ -23,29 +23,20 @@ void SocketHandleWaiter::Subscribe(Subscriber* subscriber,
                                    SocketHandleRef handle,
                                    uint32_t flags) {
   std::lock_guard<std::mutex> lock(mutex_);
-  if (handle_mappings_.find(handle) == handle_mappings_.end()) {
-    handle_mappings_.emplace(handle, SocketSubscription{subscriber, flags});
-  }
+  handle_mappings_.try_emplace(handle, SocketSubscription{subscriber, flags});
 }
 
 void SocketHandleWaiter::Unsubscribe(Subscriber* subscriber,
                                      SocketHandleRef handle) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto iterator = handle_mappings_.find(handle);
-  if (handle_mappings_.find(handle) != handle_mappings_.end()) {
-    handle_mappings_.erase(iterator);
-  }
+  handle_mappings_.erase(handle);
 }
 
 void SocketHandleWaiter::UnsubscribeAll(Subscriber* subscriber) {
   std::lock_guard<std::mutex> lock(mutex_);
-  for (auto it = handle_mappings_.begin(); it != handle_mappings_.end();) {
-    if (it->second.subscriber == subscriber) {
-      it = handle_mappings_.erase(it);
-    } else {
-      it++;
-    }
-  }
+  std::erase_if(handle_mappings_, [subscriber](const auto& pair) {
+    return pair.second.subscriber == subscriber;
+  });
 }
 
 void SocketHandleWaiter::OnHandleDeletion(
@@ -53,9 +44,7 @@ void SocketHandleWaiter::OnHandleDeletion(
     SocketHandleRef handle,
     bool disable_locking_for_testing) OSP_NO_THREAD_SAFETY_ANALYSIS {
   std::unique_lock<std::mutex> lock(mutex_);
-  auto it = handle_mappings_.find(handle);
-  if (it != handle_mappings_.end()) {
-    handle_mappings_.erase(it);
+  if (handle_mappings_.erase(handle) > 0) {
     if (!disable_locking_for_testing) {
       handles_being_deleted_.push_back(handle);
 
@@ -127,7 +116,10 @@ Error SocketHandleWaiter::ProcessHandles(Clock::duration timeout) {
           flags &= ~kWritable;
         }
       }
-      handles.push_back(HandleWithFlags{.handle = pair.first, .flags = flags});
+      if (flags != 0) {
+        handles.push_back(
+            HandleWithFlags{.handle = pair.first, .flags = flags});
+      }
     }
   }
   if (handles.empty()) {

@@ -41,13 +41,9 @@ void TlsDataRouterPosix::RegisterConnection(TlsConnectionPosix* connection) {
 void TlsDataRouterPosix::DeregisterConnection(TlsConnectionPosix* connection) {
   {
     std::lock_guard<std::mutex> lock(connections_mutex_);
-    auto it = std::remove_if(
-        connections_.begin(), connections_.end(),
-        [connection](TlsConnectionPosix* conn) { return conn == connection; });
-    if (it == connections_.end()) {
+    if (std::erase(connections_, connection) == 0) {
       return;
     }
-    connections_.erase(it, connections_.end());
   }
 
   waiter_->OnHandleDeletion(this, connection->socket_handle(),
@@ -146,7 +142,7 @@ bool TlsDataRouterPosix::HasTimedOut(Clock::time_point start_time,
 
 bool TlsDataRouterPosix::IsSocketWatched(StreamSocketPosix* socket) const {
   std::lock_guard<std::mutex> lock(accept_socket_mutex_);
-  return accept_socket_mappings_.find(socket) != accept_socket_mappings_.end();
+  return accept_socket_mappings_.contains(socket);
 }
 
 }  // namespace openscreen

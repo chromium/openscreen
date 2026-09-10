@@ -59,10 +59,7 @@ void UdpSocketReaderPosix::OnDelete(UdpSocketPosix* socket,
                                     bool disable_locking_for_testing) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = std::find(sockets_.begin(), sockets_.end(), socket);
-    if (it != sockets_.end()) {
-      sockets_.erase(it);
-    }
+    std::erase(sockets_, socket);
   }
 
   waiter_->OnHandleDeletion(this, std::cref(socket->GetHandle()),

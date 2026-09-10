@@ -33,34 +33,33 @@ class ScopedPipe {
   ScopedPipe() : pipe_(Traits::kInvalidValue) {}
   explicit ScopedPipe(PipeType pipe) : pipe_(pipe) {}
   ScopedPipe(const ScopedPipe&) = delete;
-  ScopedPipe(ScopedPipe&& other) : pipe_(other.release()) {}
-  ~ScopedPipe() {
-    if (pipe_ != Traits::kInvalidValue)
-      Traits::Close(release());
-  }
+  ScopedPipe(ScopedPipe&& other) noexcept
+      : pipe_(std::exchange(other.pipe_, Traits::kInvalidValue)) {}
+  ~ScopedPipe() { Close(); }
 
-  ScopedPipe& operator=(ScopedPipe&& other) {
-    if (pipe_ != Traits::kInvalidValue)
-      Traits::Close(release());
-    pipe_ = other.release();
+  ScopedPipe& operator=(const ScopedPipe&) = delete;
+  ScopedPipe& operator=(ScopedPipe&& other) noexcept {
+    if (this != &other) {
+      Close();
+      pipe_ = std::exchange(other.pipe_, Traits::kInvalidValue);
+    }
     return *this;
   }
 
   PipeType get() const { return pipe_; }
-  PipeType release() {
-    PipeType pipe = pipe_;
-    pipe_ = Traits::kInvalidValue;
-    return pipe;
-  }
 
-  bool operator==(const ScopedPipe& other) const {
-    return pipe_ == other.pipe_;
-  }
-  bool operator!=(const ScopedPipe& other) const { return !(*this == other); }
+  bool operator==(const ScopedPipe& other) const = default;
 
   explicit operator bool() const { return pipe_ != Traits::kInvalidValue; }
 
  private:
+  void Close() {
+    if (pipe_ != Traits::kInvalidValue) {
+      Traits::Close(pipe_);
+      pipe_ = Traits::kInvalidValue;
+    }
+  }
+
   PipeType pipe_;
 };
 

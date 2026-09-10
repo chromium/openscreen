@@ -4,14 +4,16 @@
 
 #include "platform/impl/socket_handle_waiter_posix.h"
 
-#include <time.h>
+#include <poll.h>
+#include <stdint.h>
 
 #include <algorithm>
+#include <chrono>
+#include <limits>
 #include <vector>
 
 #include "platform/base/error.h"
 #include "platform/impl/socket_handle_posix.h"
-#include "platform/impl/timeval_posix.h"
 #include "platform/impl/udp_socket_posix.h"
 #include "util/osp_logging.h"
 
@@ -27,76 +29,77 @@ ErrorOr<std::vector<SocketHandleWaiterPosix::HandleWithFlags>>
 SocketHandleWaiterPosix::AwaitSocketsReady(
     const std::vector<SocketHandleWaiterPosix::HandleWithFlags>& sockets,
     const Clock::duration& timeout) {
-  int max_fd = -1;
-  fd_set read_handles{};
-  fd_set write_handles{};
+  if (sockets.empty()) {
+    return Error::Code::kAgain;
+  }
 
-  FD_ZERO(&read_handles);
-  FD_ZERO(&write_handles);
+  std::vector<struct pollfd> pollfds;
+  pollfds.reserve(sockets.size());
   for (const HandleWithFlags& hwf : sockets) {
+    if (hwf.handle.get().fd < 0) {
+      return Error::Code::kIOFailure;
+    }
+    decltype(pollfd::events) events = 0;
     if (hwf.flags & Flags::kReadable) {
-      FD_SET(hwf.handle.get().fd, &read_handles);
+      events |= POLLIN;
     }
-
-    // Only add the socket to the write_handles list if it is configured for
-    // write events and also has a pending write. This keeps us from polling
-    // select every few nanoseconds.
     if (hwf.flags & Flags::kWritable) {
-      FD_SET(hwf.handle.get().fd, &write_handles);
+      events |= POLLOUT;
     }
-    max_fd = std::max(max_fd, hwf.handle.get().fd);
-  }
-  if (max_fd < 0) {
-    return Error::Code::kIOFailure;
+    OSP_CHECK_GT(events, 0);
+    pollfds.push_back(
+        {.fd = hwf.handle.get().fd, .events = events, .revents = 0});
   }
 
-  struct timeval tv {
-    ToTimeval(timeout)
-  };
-  // This value is set to 'max_fd + 1' by convention. Also, select() is
-  // level-triggered so incomplete reads/writes by the caller are fine and will
-  // be picked up again on the next select() call.  For more information, see:
-  // http://man7.org/linux/man-pages/man2/select.2.html
-  const int max_fd_to_watch = max_fd + 1;
-  const int rv =
-      select(max_fd_to_watch, &read_handles, &write_handles, nullptr, &tv);
+  OSP_CHECK_GE(timeout, Clock::duration::zero());
+  const int64_t timeout_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count();
+  OSP_CHECK_LE(timeout_ms,
+               static_cast<int64_t>(std::numeric_limits<int>::max()));
+  const int timeout_arg = static_cast<int>(timeout_ms);
+  const int rv = poll(pollfds.data(), pollfds.size(), timeout_arg);
   if (rv == -1) {
-    // This is the case when an error condition is hit within the select(...)
-    // command.
     return Error::Code::kIOFailure;
   } else if (rv == 0) {
-    // This occurs when no sockets have a pending read.
+    // poll() timed out and zero file descriptors have ready events.
     return Error::Code::kAgain;
   }
 
   std::vector<HandleWithFlags> changed_handles;
-  for (const HandleWithFlags& hwf : sockets) {
+  for (size_t i = 0; i < sockets.size(); ++i) {
     uint32_t flags = 0;
-    if (FD_ISSET(hwf.handle.get().fd, &read_handles)) {
+    const decltype(pollfd::revents) revents = pollfds[i].revents;
+    // Map POLLHUP, POLLERR, and POLLNVAL to readable/writable so subscribers
+    // are unblocked to handle EOF/errors on the next read() or write(),
+    // matching select() behavior where closed or errored sockets become ready.
+    if (revents & (POLLIN | POLLHUP | POLLERR | POLLNVAL)) {
       flags |= Flags::kReadable;
     }
-    if (FD_ISSET(hwf.handle.get().fd, &write_handles)) {
+    if (revents & (POLLOUT | POLLHUP | POLLERR | POLLNVAL)) {
       flags |= Flags::kWritable;
     }
+    // Only return flags that were originally requested.
+    flags &= sockets[i].flags;
     if (flags) {
-      changed_handles.push_back({hwf.handle, flags});
+      changed_handles.push_back({sockets[i].handle, flags});
     }
   }
   return changed_handles;
 }
 
 void SocketHandleWaiterPosix::RunUntilStopped() {
-  const bool was_running = is_running_.exchange(true);
+  const bool was_running =
+      is_running_.exchange(true, std::memory_order_acq_rel);
   OSP_CHECK(!was_running);
 
   constexpr Clock::duration kHandleReadyTimeout = std::chrono::milliseconds(50);
-  while (is_running_) {
+  while (is_running_.load(std::memory_order_relaxed)) {
     ProcessHandles(kHandleReadyTimeout);
   }
 }
 
 void SocketHandleWaiterPosix::RequestStopSoon() {
-  is_running_.store(false);
+  is_running_.store(false, std::memory_order_release);
 }
 
 }  // namespace openscreen

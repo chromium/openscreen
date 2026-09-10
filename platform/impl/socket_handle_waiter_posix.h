@@ -37,7 +37,7 @@ class SocketHandleWaiterPosix : public SocketHandleWaiter {
 
  private:
   // Atomic so that we can perform atomic exchanges.
-  std::atomic_bool is_running_;
+  std::atomic_bool is_running_{false};
 };
 
 }  // namespace openscreen

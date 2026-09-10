@@ -51,10 +51,14 @@ TEST_F(ScopedPipeTest, Close) {
 
   {
     ScopedPipe<IntTraits> x(3);
-    EXPECT_EQ(3, x.release());
+    x = ScopedPipe<IntTraits>{};
+    EXPECT_EQ(IntTraits::kInvalidValue, x.get());
+    EXPECT_THAT(*g_freed_values, ElementsAre(3));
+    g_freed_values->clear();
 
     ScopedPipe<IntTraits> y;
-    EXPECT_EQ(IntTraits::kInvalidValue, y.release());
+    y = ScopedPipe<IntTraits>{};
+    EXPECT_TRUE(g_freed_values->empty());
   }
   ASSERT_TRUE(g_freed_values->empty());
 
