@@ -1406,5 +1406,53 @@ TEST_F(SenderTest, ConfiguresMaxInFlightMediaDuration) {
             std::chrono::milliseconds(250));
 }
 
+TEST_F(SenderTest, IgnoresOutOfRangeCheckpoint) {
+  StrictMock<MockObserver> observer;
+  sender()->SetObserver(&observer);
+
+  EncodedFrameWithBuffer frame;
+  PopulateFrameWithDefaults(FrameId::first(), FakeClock::now() - kCaptureDelay,
+                            0, 24 /* bytes */, &frame);
+  frame.dependency = EncodedFrame::Dependency::kKeyFrame;
+  frame.referenced_frame_id = frame.frame_id;
+  ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
+  SimulateExecution(kFrameDuration);
+  EXPECT_EQ(1u, sender()->GetInFlightFrameCount());
+
+  // Checkpoint is beyond last_enqueued_frame_id_ (FrameId::first()).
+  // It should be ignored and not cancel the frame in flight.
+  EXPECT_CALL(observer, OnFrameCanceled(_)).Times(0);
+  receiver()->SetCheckpointFrame(FrameId::first() + 5);
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution();
+
+  Mock::VerifyAndClearExpectations(&observer);
+  EXPECT_EQ(1u, sender()->GetInFlightFrameCount());
+}
+
+TEST_F(SenderTest, IgnoresOutOfRangeIndividualAcks) {
+  StrictMock<MockObserver> observer;
+  sender()->SetObserver(&observer);
+
+  EncodedFrameWithBuffer frame;
+  PopulateFrameWithDefaults(FrameId::first(), FakeClock::now() - kCaptureDelay,
+                            0, 24 /* bytes */, &frame);
+  frame.dependency = EncodedFrame::Dependency::kKeyFrame;
+  frame.referenced_frame_id = frame.frame_id;
+  ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
+  SimulateExecution(kFrameDuration);
+  EXPECT_EQ(1u, sender()->GetInFlightFrameCount());
+
+  // Frame ACK is beyond last_enqueued_frame_id_ (FrameId::first()).
+  // It should be ignored and not cancel the frame in flight.
+  EXPECT_CALL(observer, OnFrameCanceled(_)).Times(0);
+  receiver()->SetNacksAndAcks({}, {FrameId::first() + 5});
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution();
+
+  Mock::VerifyAndClearExpectations(&observer);
+  EXPECT_EQ(1u, sender()->GetInFlightFrameCount());
+}
+
 }  // namespace
 }  // namespace openscreen::cast

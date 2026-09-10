@@ -495,10 +495,9 @@ void SenderImpl::OnReceiverCheckpoint(FrameId frame_id,
                         "playout_delay", ToString(playout_delay));
   if (frame_id > last_enqueued_frame_id_) {
     TRACE_SET_RESULT(Error::Code::kParameterOutOfRange);
-    OSP_LOG_ERROR
-        << "Ignoring checkpoint for " << latest_expected_frame_id_
-        << " because this Sender could not have sent any frames after "
-        << last_enqueued_frame_id_ << '.';
+    OSP_LOG_WARN << "Ignoring checkpoint for " << frame_id
+                 << " because this Sender could not have sent any frames after "
+                 << last_enqueued_frame_id_ << '.';
     return;
   }
   // CompoundRtcpParser should guarantee this:
@@ -532,11 +531,11 @@ void SenderImpl::OnReceiverHasFrames(std::vector<FrameId> acks) {
 
   if (acks.back() > last_enqueued_frame_id_) {
     TRACE_SET_RESULT(Error::Code::kParameterOutOfRange);
-    OSP_LOG_ERROR << "Ignoring individual frame ACKs: ACKing frame "
-                  << latest_expected_frame_id_
-                  << " is invalid because this Sender could not have sent any "
-                     "frames after "
-                  << last_enqueued_frame_id_ << '.';
+    OSP_LOG_WARN << "Ignoring individual frame ACKs: ACKing frame "
+                 << acks.back()
+                 << " is invalid because this Sender could not have sent any "
+                    "frames after "
+                 << last_enqueued_frame_id_ << '.';
     return;
   }
 
