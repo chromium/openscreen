@@ -80,3 +80,8 @@
 	path = third_party/rust
 	url = https://chromium.googlesource.com/chromium/src/third_party/rust
 	gclient-condition = not build_with_chromium
+[submodule "third_party/simple_dns/src"]
+	path = third_party/simple_dns/src
+	url = https://github.com/balliegojr/simple-dns
+	gclient-condition = not build_with_chromium
+

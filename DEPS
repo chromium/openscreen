@@ -137,6 +137,10 @@ vars = {
   # the commit queue can handle CLs rolling rust
   # and whatever else without interference from each other.
   'rust_revision': '9200834b7dde809b652b9f0d4561c2bc0e9067c8',
+  # Three lines of non-changing comments so that
+  # the commit queue can handle CLs rolling simple_dns
+  # and whatever else without interference from each other.
+  'simple_dns_revision': '5c7ec98798d7c9f7d76df7aa3bbe754913ff5159',
 
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling clang update.py
@@ -547,6 +551,14 @@ deps = {
   'third_party/rust': {
     'url': Var('chromium_git') + '/chromium/src/third_party/rust' +
       '@' + Var('rust_revision'),
+    'condition': 'not build_with_chromium',
+  },
+
+  # TODO(b/554350196): Host a Git-on-Borg mirror or vendor into Chromium
+  # //third_party/rust via gnrt for automated dependency rolling.
+  'third_party/simple_dns/src': {
+    'url': Var('github') + '/balliegojr/simple-dns.git' +
+      '@' + Var('simple_dns_revision'),
     'condition': 'not build_with_chromium',
   },
 }

@@ -15,6 +15,7 @@ clang-format
 third_party/rust-toolchain/
 third_party/rust/
 tools/clang/scripts/update.py
+tools/rust/update_rust.py
 yajsv
 yajsv.exe
 

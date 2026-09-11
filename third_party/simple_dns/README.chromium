@@ -1,0 +1,13 @@
+Name: simple-dns
+Short Name: simple_dns
+URL: https://github.com/balliegojr/simple-dns
+Version: 0.12.0
+Revision: 5c7ec98798d7c9f7d76df7aa3bbe754913ff5159
+License: MIT
+License File: LICENSE
+Security Critical: yes
+Shipped: yes
+
+Description:
+simple-dns is a lightweight, pure Rust library for parsing and serializing
+DNS and mDNS packets and resource records.

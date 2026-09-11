@@ -2,9 +2,42 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//build/config/rust.gni")
 import("//build_overrides/build.gni")
 import("../gni/openscreen.gni")
 import("../testing/libfuzzer/fuzzer_test.gni")
+
+declare_args() {
+  # Enables the Rust simple-dns backend for mDNS packet parsing and
+  # serialization.
+  use_rust_mdns_parser = enable_rust && !build_with_chromium
+}
+
+assert(
+    !use_rust_mdns_parser || (enable_rust && !build_with_chromium),
+    "use_rust_mdns_parser requires enable_rust = true and !build_with_chromium.")
+
+if (use_rust_mdns_parser) {
+  import("//build/rust/rust_static_library.gni")
+}
+
+config("mdns_rust_config") {
+  if (use_rust_mdns_parser) {
+    defines = [ "USE_RUST_MDNS_PARSER" ]
+  }
+}
+
+if (use_rust_mdns_parser) {
+  rust_static_library("mdns_rust") {
+    crate_root = "mdns/public/mdns_wire.rs"
+    allow_unsafe = true
+    sources = [ crate_root ]
+    cxx_bindings = [ crate_root ]
+    deps = [ "//third_party/simple_dns" ]
+    configs += openscreen_add_public_configs
+    configs += [ ":mdns_rust_config" ]
+  }
+}
 
 visibility = [ "./*" ]
 
@@ -43,6 +76,10 @@ openscreen_source_set("public") {
   ]
   public_deps = [ "../platform" ]
   deps = [ "../util" ]
+  configs = [ ":mdns_rust_config" ]
+  if (use_rust_mdns_parser) {
+    deps += [ ":mdns_rust" ]
+  }
   friend = [ ":unittests" ]
 }
 
@@ -177,6 +214,11 @@ openscreen_source_set("unittests") {
     "../third_party/googletest:gtest",
     "../util",
   ]
+
+  if (use_rust_mdns_parser) {
+    sources += [ "mdns/public/mdns_wire_unittest.cc" ]
+    deps += [ ":mdns_rust" ]
+  }
 }
 
 openscreen_fuzzer_test("mdns_fuzzer") {

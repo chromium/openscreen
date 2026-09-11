@@ -1,0 +1,70 @@
+# Copyright 2026 The Chromium Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/cargo_crate.gni")
+
+cargo_crate("simple_dns") {
+  crate_type = "rlib"
+  crate_root = "src/simple-dns/src/lib.rs"
+
+  # TODO(b/554350196): Once simple-dns is vendored into Chromium
+  # //third_party/rust, gnrt will automatically generate this crate target and
+  # source list. Until then, sources are manually listed for Open Screen
+  # standalone builds.
+  sources = [
+    "src/simple-dns/src/bytes_buffer.rs",
+    "src/simple-dns/src/cursor.rs",
+    "src/simple-dns/src/dns/character_string.rs",
+    "src/simple-dns/src/dns/header.rs",
+    "src/simple-dns/src/dns/header_buffer.rs",
+    "src/simple-dns/src/dns/mod.rs",
+    "src/simple-dns/src/dns/name.rs",
+    "src/simple-dns/src/dns/packet.rs",
+    "src/simple-dns/src/dns/question.rs",
+    "src/simple-dns/src/dns/rdata/a.rs",
+    "src/simple-dns/src/dns/rdata/aaaa.rs",
+    "src/simple-dns/src/dns/rdata/afsdb.rs",
+    "src/simple-dns/src/dns/rdata/caa.rs",
+    "src/simple-dns/src/dns/rdata/cert.rs",
+    "src/simple-dns/src/dns/rdata/dhcid.rs",
+    "src/simple-dns/src/dns/rdata/dnskey.rs",
+    "src/simple-dns/src/dns/rdata/ds.rs",
+    "src/simple-dns/src/dns/rdata/eui.rs",
+    "src/simple-dns/src/dns/rdata/hinfo.rs",
+    "src/simple-dns/src/dns/rdata/ipseckey.rs",
+    "src/simple-dns/src/dns/rdata/isdn.rs",
+    "src/simple-dns/src/dns/rdata/kx.rs",
+    "src/simple-dns/src/dns/rdata/loc.rs",
+    "src/simple-dns/src/dns/rdata/macros.rs",
+    "src/simple-dns/src/dns/rdata/minfo.rs",
+    "src/simple-dns/src/dns/rdata/mod.rs",
+    "src/simple-dns/src/dns/rdata/mx.rs",
+    "src/simple-dns/src/dns/rdata/naptr.rs",
+    "src/simple-dns/src/dns/rdata/nsap.rs",
+    "src/simple-dns/src/dns/rdata/nsec.rs",
+    "src/simple-dns/src/dns/rdata/null.rs",
+    "src/simple-dns/src/dns/rdata/opt.rs",
+    "src/simple-dns/src/dns/rdata/route_through.rs",
+    "src/simple-dns/src/dns/rdata/rp.rs",
+    "src/simple-dns/src/dns/rdata/rrsig.rs",
+    "src/simple-dns/src/dns/rdata/soa.rs",
+    "src/simple-dns/src/dns/rdata/srv.rs",
+    "src/simple-dns/src/dns/rdata/svcb.rs",
+    "src/simple-dns/src/dns/rdata/txt.rs",
+    "src/simple-dns/src/dns/rdata/wks.rs",
+    "src/simple-dns/src/dns/rdata/zonemd.rs",
+    "src/simple-dns/src/dns/resource_record.rs",
+    "src/simple-dns/src/dns/wire_format.rs",
+    "src/simple-dns/src/lib.rs",
+    "src/simple-dns/src/seek.rs",
+    "src/simple-dns/src/simple_dns_error.rs",
+    "src/simple-dns/src/write.rs",
+  ]
+  inputs = [ "src/simple-dns/README.md" ]
+  deps = [ "//third_party/rust/bitflags/v2:lib" ]
+  build_native_rust_unit_tests = false
+  edition = "2021"
+  allow_unsafe = false
+  features = [ "std" ]
+}
