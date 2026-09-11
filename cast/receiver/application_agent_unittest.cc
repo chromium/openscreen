@@ -565,44 +565,57 @@ TEST_F(ApplicationAgentTest, LaunchesApp_PassesMessages_ThenStopsApp) {
 
   // Phase 3: Sender sends a STOP request, which causes the receiver
   // (ApplicationAgent) to stop the app. Then, the idle app will automatically
-  // be re-launched, and a RECEIVER_STATUS broadcast message will notify the
-  // sender of that.
+  // be re-launched, and a RECEIVER_STATUS broadcast message will notify all
+  // senders of that. In addition, a unicast RECEIVER_STATUS echoing the STOP
+  // request's requestId is sent directly to the requester, confirming the
+  // STOP succeeded (mirrors real Cast receiver behavior).
   Sequence phase3;
   EXPECT_CALL(some_app, DidStop()).InSequence(phase3);
   EXPECT_CALL(*idle_app(), DidLaunch(_, NotNull())).InSequence(phase3);
   // Notes:
   // - requestId is 0 for broadcast (no requestor).
   // - These appIDs and the displayName come from `idle_app_`.
+  const std::string kIdleAppReceiverStatus = R"({
+      "requestId":0,
+      "type":"RECEIVER_STATUS",
+      "status":{
+        "applications":[
+          {
+            "sessionId":"E8C28D3C-9ABC-DEF0-1234-000000000002",
+            "appId":"E8C28D3C",
+            "universalAppId":"E8C28D3C",
+            "displayName":"Backdrop",
+            "isIdleScreen":true,
+            "launchedFromCloud":false,
+            "namespaces":[]
+          }
+        ],
+        "userEq":{},
+        "volume":{
+          "controlType":"attenuation",
+          "level":1.0,
+          "muted":false,
+          "stepInterval":0.05
+        }
+      }
+  })";
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .InSequence(phase3)
       .WillOnce([&](CastSocket*, CastMessage message) {
-        const std::string kExpectedJson = R"({
-          "requestId":0,
-          "type":"RECEIVER_STATUS",
-          "status":{
-            "applications":[
-              {
-                "sessionId":"E8C28D3C-9ABC-DEF0-1234-000000000002",
-                "appId":"E8C28D3C",
-                "universalAppId":"E8C28D3C",
-                "displayName":"Backdrop",
-                "isIdleScreen":true,
-                "launchedFromCloud":false,
-                "namespaces":[]
-              }
-            ],
-            "userEq":{},
-            "volume":{
-              "controlType":"attenuation",
-              "level":1.0,
-              "muted":false,
-              "stepInterval":0.05
-            }
-          }
-        })";
         const Json::Value payload = ValidateAndParseMessage(
             message, kPlatformReceiverId, kBroadcastId, kReceiverNamespace);
-        EXPECT_EQ(json::Parse(kExpectedJson).value(), payload);
+        EXPECT_EQ(json::Parse(kIdleAppReceiverStatus).value(), payload);
+      });
+  EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
+      .InSequence(phase3)
+      .WillOnce([&](CastSocket*, CastMessage message) {
+        const Json::Value payload =
+            ValidateAndParseMessage(message, kPlatformReceiverId,
+                                    kPlatformSenderId, kReceiverNamespace);
+        ErrorOr<Json::Value> status = json::Parse(kIdleAppReceiverStatus);
+        Json::Value expected = status.value();
+        expected["requestId"] = 18;
+        EXPECT_EQ(expected, payload);
       });
   auto stop_result = sender_outbound()->Send(MakeCastMessage(
       kPlatformSenderId, kPlatformReceiverId, kReceiverNamespace, R"({

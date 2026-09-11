@@ -292,15 +292,13 @@ Json::Value ApplicationAgent::HandleLaunch(const Json::Value& request,
 
 Json::Value ApplicationAgent::HandleStop(const Json::Value& request) {
   const Json::Value& session_id = request[kMessageKeySessionId];
-  if (session_id.isNull()) {
+  const bool has_session_id = !session_id.isNull();
+  const bool is_already_launched =
+      has_session_id && session_id.isString() && launched_app_ &&
+      session_id.asString() == launched_app_->GetSessionId();
+  if (!has_session_id || is_already_launched) {
     GoIdle();
-    return {};
-  }
-
-  if (session_id.isString() && launched_app_ &&
-      session_id.asString() == launched_app_->GetSessionId()) {
-    GoIdle();
-    return {};
+    return HandleGetStatus(request);
   }
 
   Json::Value response;
