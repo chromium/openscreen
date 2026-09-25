@@ -21,8 +21,6 @@ namespace openscreen {
 // may sometimes create multiple instances. In that case, the wake lock should
 // be engaged upon creating the first instance, and then held until all
 // instances have been destroyed.
-//
-// TODO(issuetracker.google.com/288311411): Implement for Linux.
 
 class ScopedWakeLock;
 using ScopedWakeLockPtr = std::unique_ptr<ScopedWakeLock, TaskRunnerDeleter>;

@@ -42,6 +42,7 @@
 #include "platform/base/udp_packet.h"
 #include "platform/test/fake_clock.h"
 #include "platform/test/fake_task_runner.h"
+#include "testing/util/chrono_test_helpers.h"
 #include "util/chrono_helpers.h"
 #include "util/osp_logging.h"
 #include "util/raw_ptr.h"
@@ -141,24 +142,6 @@ struct SimulatedFrame : public EncodedFrame {
 constexpr milliseconds SimulatedFrame::kFrameDuration;
 constexpr milliseconds SimulatedFrame::kTargetPlayoutDelayChange;
 constexpr int SimulatedFrame::kPlayoutChangeAtFrame;
-
-template <typename T>
-std::string ToString(T duration) {
-  std::ostringstream ss;
-  openscreen::clock_operators::operator<<(ss, duration);
-  return ss.str();
-}
-
-// TODO(jophba): this matcher is likely more generally useful and should
-// be refactored.
-MATCHER_P(EqualsDuration, expected, ToString(expected)) {
-  if (arg == expected) {
-    return true;
-  }
-  *result_listener << ToString(arg) << " (a difference of "
-                   << ToString(arg - expected) << ")";
-  return false;
-}
 
 // Processes packets from the Receiver under test, as a real Sender might, and
 // allows the unit tests to set expectations on events of interest to confirm

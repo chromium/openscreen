@@ -30,9 +30,6 @@ vars = {
 
   # Needed to download additional clang binaries for processing coverage data
   # (from binaries with GN arg `use_coverage=true`).
-  #
-  # TODO(issuetracker.google.com/155195126): Change this to False and update
-  # buildbot to call tools/download-clang-update-script.py instead.
   'checkout_clang_coverage_tools': True,
 
  # Fetch clang-tidy into the same bin/ directory as our clang binary.

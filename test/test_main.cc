@@ -87,8 +87,6 @@ GlobalTestState InitFromArgs(int argc, char** argv) {
 // function if we want to do global test environment setup.
 // See the below link for more info;
 // https://github.com/google/googletest/blob/main/docs/advanced.md#sharing-resources-between-tests-in-the-same-test-suite
-// TODO(issuetracker.google.com/172242670): rename reference to "main"
-// once googletest has a "main" branch.
 // This main method is a drop-in replacement for anywhere that currently
 // depends on gtest_main, meaning it can be linked into any test-only binary
 // to provide a main implementation that supports setting flags and other
