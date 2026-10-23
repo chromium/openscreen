@@ -297,6 +297,12 @@ def _check_recipes(input_api, output_api):
     return input_api.RunTests(commands, parallel=False)
 
 
+_EXCLUDED_PATHS = (
+    # Vendored bootstrap script from infra/luci/recipes-py.
+    r'^infra[\\/]recipes[\\/]recipes\.py$',
+)
+
+
 def _common_checks(input_api, output_api):
     """Performs a list of checks that should be used for both presubmission and
        upload validation.
@@ -310,9 +316,11 @@ def _common_checks(input_api, output_api):
     #   CheckDoNotSubmitInDescription
     #   CheckDoNotSubmitInFiles
     #   CheckLicenses
-    results = input_api.canned_checks.PanProjectChecks(input_api,
-                                                       output_api,
-                                                       owners_check=False)
+    results = input_api.canned_checks.PanProjectChecks(
+        input_api,
+        output_api,
+        excluded_paths=_EXCLUDED_PATHS,
+        owners_check=False)
 
     # No carriage return characters, files end with one EOL (\n).
     results.extend(
