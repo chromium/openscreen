@@ -9,6 +9,7 @@
 
 #include "cast/streaming/impl/receiver_packet_router.h"
 #include "cast/streaming/public/constants.h"
+#include "cast/streaming/public/frame_trace_ids.h"
 #include "cast/streaming/public/session_config.h"
 #include "platform/base/span.h"
 #include "platform/base/trivial_clock_traits.h"
@@ -108,7 +109,8 @@ Error ReceiverImpl::ReportPlayoutEvent(FrameId frame_id,
   }
 
   TRACE_FLOW_END_WITH_TIME(TraceCategory::kReceiver, "Frame.PlayedOut",
-                           frame_id, playout_time);
+                           GetFrameIdFlowId(config_.sender_ssrc, frame_id),
+                           playout_time);
 
   return Error::None();
 }
@@ -151,7 +153,9 @@ std::optional<size_t> ReceiverImpl::AdvanceToFrameIfReady(
                            << f;
         DropAllFramesBefore(f);
       }
-      TRACE_FLOW_STEP(TraceCategory::kReceiver, "Frame.Ready", f);
+      TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kReceiver, "Frame.Ready",
+                                GetFrameIdFlowId(config_.sender_ssrc, f),
+                                now_());
       return entry.collector.GetFramePayloadSize();
     }
   }
@@ -236,7 +240,9 @@ EncodedFrame ReceiverImpl::ConsumeNextFrame(ByteBuffer buffer) {
   const FrameId frame_id = last_frame_consumed_ + 1;
   OSP_CHECK_LE(frame_id, checkpoint_frame());
 
-  TRACE_FLOW_STEP(TraceCategory::kReceiver, "Frame.Consumed", frame_id);
+  TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kReceiver, "Frame.Consumed",
+                            GetFrameIdFlowId(config_.sender_ssrc, frame_id),
+                            now_());
 
   // Decrypt the frame, populating the given output `frame`.
   PendingFrame& entry = GetQueueEntry(frame_id);
@@ -388,7 +394,17 @@ void ReceiverImpl::OnReceivedRtpPacket(Clock::time_point arrival_time,
   if (!collector.is_complete()) {
     return;  // Wait for the rest of the packets to come in.
   }
-  TRACE_FLOW_STEP(TraceCategory::kReceiver, "Frame.Complete", part->frame_id);
+  // The frame is now complete. Record this on both the Sender's flow for this
+  // frame (keyed by RTP timestamp, which bridges the Sender's and Receiver's
+  // traces) and on the start of the Receiver's flow for this frame (keyed by
+  // FrameId).
+  TRACE_FLOW_STEP_WITH_TIME(
+      TraceCategory::kReceiver, "Frame.Complete.Rtp",
+      GetRtpTimestampFlowId(config_.sender_ssrc, part->rtp_timestamp),
+      arrival_time);
+  TRACE_FLOW_BEGIN_WITH_TIME(
+      TraceCategory::kReceiver, "Frame.Complete",
+      GetFrameIdFlowId(config_.sender_ssrc, part->frame_id), arrival_time);
 
   const EncodedFrame& metadata = collector.PeekFrameMetadata();
 

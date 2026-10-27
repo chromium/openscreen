@@ -13,6 +13,7 @@
 #include "cast/streaming/impl/rtp_defines.h"
 #include "cast/streaming/impl/statistics_common.h"
 #include "cast/streaming/public/constants.h"
+#include "cast/streaming/public/frame_trace_ids.h"
 #include "cast/streaming/public/session_config.h"
 #include "platform/base/trivial_clock_traits.h"
 #include "util/chrono_helpers.h"
@@ -174,9 +175,12 @@ openscreen::cast::Sender::EnqueueFrameResult SenderImpl::EnqueueFrame(
   }
   OSP_CHECK(frame.data.data());
 
-  const auto enqueue_time = Clock::now();
-  TRACE_FLOW_BEGIN_WITH_TIME(TraceCategory::kSender, "Frame.Enqueuing",
-                             frame.rtp_timestamp.value(), enqueue_time);
+  // The library's frame lifecycle trace events are only emitted for frames
+  // that are accepted (i.e., after all of the early-return checks below pass),
+  // so that a rejected frame that is later re-submitted with the same RTP
+  // timestamp does not produce duplicated library events. Note that embedders
+  // may have already emitted events on the same flow (e.g., during encode).
+  const Clock::time_point enqueue_start_time = now_();
 
   // Check whether enqueuing the frame would exceed the design limit for the
   // span of FrameIds. Even if `num_frames_in_flight_` is less than
@@ -222,11 +226,29 @@ openscreen::cast::Sender::EnqueueFrameResult SenderImpl::EnqueueFrame(
     last_enqueued_key_frame_id_ = slot.frame.frame_id;
     last_enqueued_key_frame_time_ = now_();
   }
-  const auto enqueued_time = Clock::now();
-  TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kSender, "Frame.Enqueued",
-                            frame.rtp_timestamp.value(), enqueued_time);
-  TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kSender, "Frame.Enqueued.Rtp",
-                            frame.rtp_timestamp.value(), enqueued_time);
+
+  const TraceId flow_id =
+      GetRtpTimestampFlowId(config_.sender_ssrc, frame.rtp_timestamp);
+  // The capture timestamps are optional (they default to
+  // Clock::time_point::min()), and are provided by the embedder. If they are
+  // not provided, the flow begins at "Frame.Enqueuing" instead.
+  const bool has_capture_begin_time =
+      frame.capture_begin_time != Clock::time_point::min();
+  if (has_capture_begin_time) {
+    TRACE_FLOW_BEGIN_WITH_TIME(TraceCategory::kSender, "Frame.Capture", flow_id,
+                               frame.capture_begin_time);
+    if (frame.capture_end_time != Clock::time_point::min()) {
+      TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kSender, "Frame.Capture.End",
+                                flow_id, frame.capture_end_time);
+    }
+    TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kSender, "Frame.Enqueuing",
+                              flow_id, enqueue_start_time);
+  } else {
+    TRACE_FLOW_BEGIN_WITH_TIME(TraceCategory::kSender, "Frame.Enqueuing",
+                               flow_id, enqueue_start_time);
+  }
+  TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kSender, "Frame.Enqueued", flow_id,
+                            now_());
 
   // Update the target playout delay, if necessary.
   if (slot.frame.new_playout_delay > milliseconds::zero()) {
@@ -262,7 +284,7 @@ openscreen::cast::Sender::EnqueueFrameResult SenderImpl::EnqueueFrame(
   statistics_dispatcher_.DispatchEnqueueEvents(config_.stream_type, frame);
 
   TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kSender, "Frame.Enqueuing.End",
-                            frame.rtp_timestamp.value(), Clock::now());
+                            flow_id, now_());
 
   return OK;
 }
@@ -542,9 +564,6 @@ void SenderImpl::OnReceiverCheckpoint(FrameId frame_id,
       statistics_dispatcher_.DispatchAckEvent(
           config_.stream_type, rtp_timestamp, checkpoint_frame_id_);
       CancelPendingFrame(checkpoint_frame_id_, /*was_acked*/ true);
-
-      TRACE_FLOW_STEP(TraceCategory::kSender, "Frame.Acked",
-                      rtp_timestamp.value());
     }
   }
   latest_expected_frame_id_ = std::max(latest_expected_frame_id_, frame_id);
@@ -575,8 +594,6 @@ void SenderImpl::OnReceiverHasFrames(std::vector<FrameId> acks) {
     PendingFrameSlot& slot = get_slot_for(id);
     if (slot.is_active_for_frame(id)) {
       const RtpTimeTicks rtp_timestamp = slot.frame.rtp_timestamp;
-      TRACE_FLOW_STEP(TraceCategory::kSender, "Frame.Acked",
-                      rtp_timestamp.value());
       statistics_dispatcher_.DispatchAckEvent(config_.stream_type,
                                               rtp_timestamp, id);
     }
@@ -747,12 +764,23 @@ void SenderImpl::CancelPendingFrame(FrameId frame_id, bool was_acked) {
     return;  // Frame was already canceled.
   }
 
-  TRACE_FLOW_END(TraceCategory::kSender, "Frame.Cancelled",
-                 slot.frame.rtp_timestamp.value());
-
+  // Only the flow of a frame cancelled without an ACK (i.e., by
+  // CancelInFlightData()) is terminated here. Note that frames the Receiver
+  // skips are reported via its checkpoint, and so are treated as ACKed. The
+  // flow of an ACKed frame is intentionally left open, since Receiver-side
+  // events keyed by the same RTP timestamp (e.g., "Frame.Complete.Rtp") may be
+  // ordered after the ACK in a merged trace if the Sender's and Receiver's
+  // clocks are not perfectly synchronized.
+  const TraceId flow_id =
+      GetRtpTimestampFlowId(config_.sender_ssrc, slot.frame.rtp_timestamp);
   if (was_acked) {
+    TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kSender, "Frame.Acked", flow_id,
+                              now_());
     packet_router_->OnPayloadReceived(
         slot.frame.data.size(), rtcp_packet_arrival_time_, round_trip_time_);
+  } else {
+    TRACE_FLOW_END_WITH_TIME(TraceCategory::kSender, "Frame.Cancelled", flow_id,
+                             now_());
   }
 
   slot.frame.frame_id = FrameId();

@@ -27,9 +27,11 @@
 #include "cast/streaming/public/constants.h"
 #include "cast/streaming/public/encoded_frame.h"
 #include "cast/streaming/public/frame_id.h"
+#include "cast/streaming/public/frame_trace_ids.h"
 #include "cast/streaming/public/session_config.h"
 #include "cast/streaming/sender_packet_router.h"
 #include "cast/streaming/ssrc.h"
+#include "cast/streaming/testing/flow_event_recorder.h"
 #include "cast/streaming/testing/mock_environment.h"
 #include "cast/streaming/testing/simple_socket_subscriber.h"
 #include "gmock/gmock.h"
@@ -45,6 +47,7 @@
 
 using testing::_;
 using testing::AtLeast;
+using testing::ElementsAre;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -944,6 +947,84 @@ TEST_F(SenderTest, CanCancelAllInFlightFrames) {
   EXPECT_CALL(observer, OnFrameCanceled(_)).Times(kMaxUnackedFrames);
   sender()->CancelInFlightData();
 }
+
+#if defined(ENABLE_TRACE_LOGGING)
+// Tests that the Sender emits the frame lifecycle flow events using flow IDs
+// namespaced by its SSRC, emits "Frame.Acked" for ACKed frames, and terminates
+// the flow with "Frame.Cancelled" only for frames cancelled without an ACK.
+TEST_F(SenderTest, EmitsFrameLifecycleFlowEvents) {
+  FlowEventRecorder recorder;
+
+  // The first frame provides capture timestamps, and will be ACKed. The second
+  // frame does not provide capture timestamps, and will be cancelled.
+  EncodedFrameWithBuffer frames[2];
+  const Clock::time_point capture_begin_time = FakeClock::now() - kCaptureDelay;
+  const Clock::time_point capture_end_time =
+      FakeClock::now() - kCaptureDelay / 2;
+  PopulateFrameWithDefaults(sender()->GetNextFrameId(), capture_begin_time, 0,
+                            13 /* bytes */, &frames[0]);
+  frames[0].capture_begin_time = capture_begin_time;
+  frames[0].capture_end_time = capture_end_time;
+  const Clock::time_point first_enqueue_time = FakeClock::now();
+  ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frames[0]));
+  SimulateExecution(kFrameDuration);
+
+  PopulateFrameWithDefaults(sender()->GetNextFrameId(),
+                            FakeClock::now() - kCaptureDelay, 0, 13 /* bytes */,
+                            &frames[1]);
+  ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frames[1]));
+  SimulateExecution(kFrameDuration);
+
+  receiver()->SetCheckpointFrame(FrameId::first());
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution();  // RTCP transmitted to Sender.
+  const Clock::time_point ack_time = FakeClock::now();
+  sender()->CancelInFlightData();
+
+  const TraceId acked_flow_id =
+      GetRtpTimestampFlowId(kSenderSsrc, frames[0].rtp_timestamp);
+  const TraceId cancelled_flow_id =
+      GetRtpTimestampFlowId(kSenderSsrc, frames[1].rtp_timestamp);
+  ASSERT_NE(acked_flow_id, cancelled_flow_id);
+
+  EXPECT_THAT(
+      recorder.NamesFor(acked_flow_id),
+      ElementsAre("Frame.Capture", "Frame.Capture.End", "Frame.Enqueuing",
+                  "Frame.Enqueued", "Frame.Enqueuing.End", "Frame.Acked"));
+  EXPECT_THAT(recorder.NamesFor(cancelled_flow_id),
+              ElementsAre("Frame.Enqueuing", "Frame.Enqueued",
+                          "Frame.Enqueuing.End", "Frame.Cancelled"));
+
+  // No flow events should have been emitted with any other flow ID (e.g., a
+  // raw, un-namespaced RTP timestamp).
+  for (const FlowEventRecorder::Event& event : recorder.events()) {
+    EXPECT_TRUE(event.flow_id == acked_flow_id ||
+                event.flow_id == cancelled_flow_id)
+        << event.name << " has unexpected flow ID " << event.flow_id;
+  }
+
+  // The capture events are back-dated to the times provided in the frame, and
+  // the remaining events use the Sender's clock.
+  const std::vector<FlowEventRecorder::Event> acked_events =
+      recorder.EventsFor(acked_flow_id);
+  ASSERT_EQ(6u, acked_events.size());
+  EXPECT_EQ(FlowType::kFlowBegin, acked_events[0].type);
+  EXPECT_EQ(capture_begin_time, acked_events[0].time);
+  EXPECT_EQ(capture_end_time, acked_events[1].time);
+  EXPECT_EQ(first_enqueue_time, acked_events[2].time);
+  EXPECT_EQ(first_enqueue_time, acked_events[3].time);
+  EXPECT_EQ(first_enqueue_time, acked_events[4].time);
+  EXPECT_EQ(FlowType::kFlowStep, acked_events[5].type);
+  EXPECT_EQ(ack_time, acked_events[5].time);
+
+  // Without capture timestamps, the flow begins at "Frame.Enqueuing".
+  const std::vector<FlowEventRecorder::Event> cancelled_events =
+      recorder.EventsFor(cancelled_flow_id);
+  ASSERT_EQ(4u, cancelled_events.size());
+  EXPECT_EQ(FlowType::kFlowBegin, cancelled_events[0].type);
+  EXPECT_EQ(FlowType::kFlowEnd, cancelled_events[3].type);
+}
+#endif  // defined(ENABLE_TRACE_LOGGING)
 
 // Tests that the Sender rejects frames if too-long a media duration is
 // in-flight. This is the Sender's primary flow control mechanism.

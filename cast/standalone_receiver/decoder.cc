@@ -10,6 +10,7 @@
 #include <sstream>
 #include <thread>
 
+#include "cast/streaming/public/frame_trace_ids.h"
 #include "platform/base/span.h"
 #include "util/osp_logging.h"
 #include "util/std_util.h"
@@ -47,7 +48,8 @@ ByteBuffer Decoder::Buffer::AsByteBuffer() {
 Decoder::Client::Client() = default;
 Decoder::Client::~Client() = default;
 
-Decoder::Decoder(const std::string& codec_name) : codec_name_(codec_name) {
+Decoder::Decoder(const std::string& codec_name, Ssrc sender_ssrc)
+    : codec_name_(codec_name), sender_ssrc_(sender_ssrc) {
 #if LIBAVCODEC_VERSION_MAJOR < 59
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -60,7 +62,7 @@ Decoder::~Decoder() = default;
 
 void Decoder::Decode(FrameId frame_id, const Decoder::Buffer& buffer) {
   TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Decode.Begin",
-                  frame_id);
+                  GetFrameIdFlowId(sender_ssrc_, frame_id));
   if (!codec_ && !Initialize()) {
     return;
   }
@@ -118,7 +120,7 @@ void Decoder::Decode(FrameId frame_id, const Decoder::Buffer& buffer) {
       return;
     }
     TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Decode.End",
-                    decoded_frame_id);
+                    GetFrameIdFlowId(sender_ssrc_, decoded_frame_id));
     if (client_) {
       client_->OnFrameDecoded(decoded_frame_id, *decoded_frame_);
     }

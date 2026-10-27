@@ -12,6 +12,7 @@
 
 #include "cast/standalone_common/ffmpeg_glue.h"
 #include "cast/streaming/public/frame_id.h"
+#include "cast/streaming/ssrc.h"
 #include "platform/base/span.h"
 #include "util/raw_ptr.h"
 
@@ -49,7 +50,9 @@ class Decoder {
   };
 
   // `codec_name` should be the codec_name field from an OFFER message.
-  explicit Decoder(const std::string& codec_name);
+  // `sender_ssrc` identifies the stream being decoded, and is only used to
+  // compute trace flow IDs.
+  Decoder(const std::string& codec_name, Ssrc sender_ssrc);
   ~Decoder();
 
   Client* client() const { return client_; }
@@ -80,6 +83,7 @@ class Decoder {
   void OnError(const char* what, int av_errnum, FrameId frame_id);
 
   const std::string codec_name_;
+  const Ssrc sender_ssrc_;
   raw_ptr<const AVCodec> codec_ = nullptr;
   AVCodecParserContextUniquePtr parser_;
   AVCodecContextUniquePtr context_;

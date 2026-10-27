@@ -13,6 +13,7 @@
 #include "cast/standalone_sender/streaming_encoder_util.h"
 #include "cast/streaming/public/encoded_frame.h"
 #include "cast/streaming/public/environment.h"
+#include "cast/streaming/public/frame_trace_ids.h"
 #include "cast/streaming/public/sender.h"
 #include "util/chrono_helpers.h"
 #include "util/osp_logging.h"
@@ -160,12 +161,10 @@ void StreamingAv1Encoder::EncodeAndSend(
 
   work_unit.image = CloneAsAv1Image(frame);
 
-  TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kStandaloneSender, "Frame.Capture",
-                            work_unit.rtp_timestamp.value(),
-                            work_unit.capture_begin_time);
-  TRACE_FLOW_STEP_WITH_TIME(
-      TraceCategory::kStandaloneSender, "Frame.Capture.End",
-      work_unit.rtp_timestamp.value(), work_unit.capture_end_time);
+  // Note: The "Frame.Capture" trace events are emitted by the Sender, from the
+  // capture times in the EncodedFrame.
+  work_unit.flow_id = GetRtpTimestampFlowId(sender_->config().sender_ssrc,
+                                            work_unit.rtp_timestamp);
 
   work_unit.reference_time = reference_time;
   work_unit.stats_callback = std::move(stats_callback);
@@ -215,15 +214,15 @@ void StreamingAv1Encoder::ProcessWorkUnitsUntilTimeToQuit() {
     // dependency-injected "now function," since actual wall time is being
     // measured.
     const Clock::time_point encode_start_time = Clock::now();
-    TRACE_FLOW_STEP_WITH_TIME(
-        TraceCategory::kStandaloneSender, "Frame.Encode.Begin",
-        work_unit.rtp_timestamp.value(), encode_start_time);
+    TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kStandaloneSender,
+                              "Frame.Encode.Begin", work_unit.flow_id,
+                              encode_start_time);
     PrepareEncoder(work_unit.image->d_w, work_unit.image->d_h, target_bitrate);
     EncodeFrame(force_key_frame, work_unit);
     const Clock::time_point encode_end_time = Clock::now();
     TRACE_FLOW_STEP_WITH_TIME(TraceCategory::kStandaloneSender,
-                              "Frame.Encode.End",
-                              work_unit.rtp_timestamp.value(), encode_end_time);
+                              "Frame.Encode.End", work_unit.flow_id,
+                              encode_end_time);
     ComputeFrameEncodeStats(encode_end_time - encode_start_time, target_bitrate,
                             work_unit);
     UpdateSpeedSettingForNextFrame(work_unit.stats);

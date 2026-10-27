@@ -91,6 +91,7 @@ openscreen_source_set("common") {
     "public/encoded_frame.h",
     "public/environment.h",
     "public/frame_id.h",
+    "public/frame_trace_ids.h",
     "public/offer_messages.h",
     "public/protobuf_messenger.h",
     "public/receiver_message.h",
@@ -301,6 +302,7 @@ openscreen_source_set("testing") {
   testonly = true
   public = []
   sources = [
+    "testing/flow_event_recorder.h",
     "testing/message_pipe.h",
     "testing/mock_compound_rtcp_parser_client.h",
     "testing/mock_environment.h",
@@ -312,6 +314,7 @@ openscreen_source_set("testing") {
 
   deps = [
     ":sender",
+    "../../platform:test",
     "../../third_party/googletest:gmock",
     "../../third_party/googletest:gtest",
     "../../util",
@@ -337,6 +340,7 @@ openscreen_source_set("unittests") {
     "impl/expanded_value_base_unittest.cc",
     "impl/frame_collector_unittest.cc",
     "impl/frame_crypto_unittest.cc",
+    "impl/frame_trace_ids_unittest.cc",
     "impl/mock_environment.cc",
     "impl/ntp_time_unittest.cc",
     "impl/offer_messages_unittest.cc",

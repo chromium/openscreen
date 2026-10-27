@@ -11,6 +11,7 @@
 #include "cast/standalone_common/ffmpeg_glue.h"
 #include "cast/streaming/public/constants.h"
 #include "cast/streaming/public/encoded_frame.h"
+#include "cast/streaming/public/frame_trace_ids.h"
 #include "util/big_endian.h"
 #include "util/chrono_helpers.h"
 #include "util/osp_logging.h"
@@ -28,7 +29,7 @@ SDLPlayerBase::SDLPlayerBase(ClockNowFunctionPtr now_function,
       receiver_(receiver),
       error_callback_(std::move(error_callback)),
       media_type_(media_type),
-      decoder_(codec_name),
+      decoder_(codec_name, receiver.config().sender_ssrc),
       decode_alarm_(now_, task_runner),
       render_alarm_(now_, task_runner),
       presentation_alarm_(now_, task_runner) {
@@ -99,12 +100,9 @@ void SDLPlayerBase::OnFramesReady(size_t buffer_size) {
   const Clock::time_point start_time = now_();
   buffer_.Resize(buffer_size);
   EncodedFrame frame = receiver_.ConsumeNextFrame(buffer_.AsByteBuffer());
-  last_enqueued_frame_id_ = frame.frame_id;
 
   TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Received",
-                  frame.frame_id);
-  TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Received.Rtp",
-                  frame.rtp_timestamp.value());
+                  GetFlowId(frame.frame_id));
 
   // Create the tracking state for the frame in the player pipeline.
   OSP_CHECK_EQ(frames_to_render_.count(frame.frame_id), 0);
@@ -129,7 +127,7 @@ void SDLPlayerBase::OnFrameDecoded(FrameId frame_id, const AVFrame& frame) {
   // memory backing the frame.
   it->second.decoded_frame = AVFrameUniquePtr(av_frame_clone(&frame));
   TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Decoded",
-                  frame_id);
+                  GetFlowId(frame_id));
   ResumeRendering();
 }
 
@@ -138,7 +136,7 @@ void SDLPlayerBase::OnDecodeError(FrameId frame_id,
   const auto it = frames_to_render_.find(frame_id);
   if (it != frames_to_render_.end()) {
     TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Decode.Dropped",
-                    frame_id);
+                    GetFlowId(frame_id));
     frames_to_render_.erase(it);
   }
   OSP_LOG_WARN << "Requesting " << media_type_
@@ -146,6 +144,10 @@ void SDLPlayerBase::OnDecodeError(FrameId frame_id,
                << message;
   receiver_.RequestKeyFrame();
   ResumeDecoding();
+}
+
+TraceId SDLPlayerBase::GetFlowId(FrameId frame_id) const {
+  return GetFrameIdFlowId(receiver_.config().sender_ssrc, frame_id);
 }
 
 void SDLPlayerBase::RenderAndSchedulePresentation() {
@@ -183,7 +185,7 @@ void SDLPlayerBase::RenderAndSchedulePresentation() {
       break;
     }
     TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Render.Dropped",
-                    it->first);
+                    GetFlowId(it->first));
     frames_to_render_.erase(it);  // Drop the late frame.
     it = next_it;
   }
@@ -192,15 +194,14 @@ void SDLPlayerBase::RenderAndSchedulePresentation() {
   // render it and, if successful, schedule its presentation.
   const FrameId frame_id = it->first;
   current_frame_ = std::move(it->second);
-  current_frame_id_ = frame_id;
   frames_to_render_.erase(it);
 
   TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Render.Begin",
-                  frame_id);
+                  GetFlowId(frame_id));
   const ErrorOr<Clock::time_point> presentation_time =
       RenderNextFrame(current_frame_);
   TRACE_FLOW_STEP(TraceCategory::kStandaloneReceiver, "Frame.Render.End",
-                  frame_id);
+                  GetFlowId(frame_id));
   if (!presentation_time) {
     OnFatalError(presentation_time.error().message());
     return;

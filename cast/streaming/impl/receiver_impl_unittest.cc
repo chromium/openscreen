@@ -27,9 +27,11 @@
 #include "cast/streaming/public/constants.h"
 #include "cast/streaming/public/encoded_frame.h"
 #include "cast/streaming/public/environment.h"
+#include "cast/streaming/public/frame_trace_ids.h"
 #include "cast/streaming/public/session_config.h"
 #include "cast/streaming/rtp_time.h"
 #include "cast/streaming/ssrc.h"
+#include "cast/streaming/testing/flow_event_recorder.h"
 #include "cast/streaming/testing/mock_environment.h"
 #include "cast/streaming/testing/simple_socket_subscriber.h"
 #include "gmock/gmock.h"
@@ -1064,6 +1066,58 @@ TEST_F(ReceiverTest, ReportPlayoutEventUsesTargetPlayoutDelayOfFrame) {
   ASSERT_TRUE(reported_delay(kNewDelayFrame));
   EXPECT_THAT(*reported_delay(kNewDelayFrame), EqualsDuration(kLateness));
 }
+
+#if defined(ENABLE_TRACE_LOGGING)
+// Tests that the Receiver emits the frame lifecycle flow events using flow IDs
+// namespaced by the sender SSRC: The completion of the frame is recorded on the
+// Sender's RTP-keyed flow, and the Receiver's own FrameId-keyed flow runs from
+// completion through playout.
+TEST_F(ReceiverTest, EmitsFrameLifecycleFlowEvents) {
+  FlowEventRecorder recorder;
+
+  const Clock::time_point start_time = FakeClock::now();
+  ExchangeInitialReportPackets(start_time);
+
+  const SimulatedFrame kFrame(start_time, 0);
+  ReceiveFrame(0, start_time, kTargetPlayoutDelay, kRoundTripNetworkDelay);
+  ConsumeAndVerifyFrame(kFrame);
+  const Clock::time_point playout_time = now();
+  ASSERT_TRUE(receiver()
+                  ->ReportPlayoutEvent(kFrame.frame_id, kFrame.rtp_timestamp,
+                                       playout_time)
+                  .ok());
+
+  const TraceId rtp_flow_id =
+      GetRtpTimestampFlowId(kSenderSsrc, kFrame.rtp_timestamp);
+  const TraceId frame_flow_id = GetFrameIdFlowId(kSenderSsrc, kFrame.frame_id);
+
+  EXPECT_THAT(recorder.NamesFor(rtp_flow_id),
+              ElementsAre("Frame.Complete.Rtp"));
+  EXPECT_THAT(recorder.NamesFor(frame_flow_id),
+              ElementsAre("Frame.Complete", "Frame.Ready", "Frame.Consumed",
+                          "Frame.PlayedOut"));
+
+  // No flow events should have been emitted with any other flow ID (e.g., a
+  // raw, un-namespaced FrameId).
+  for (const FlowEventRecorder::Event& event : recorder.events()) {
+    EXPECT_TRUE(event.flow_id == rtp_flow_id || event.flow_id == frame_flow_id)
+        << event.name << " has unexpected flow ID " << event.flow_id;
+  }
+
+  // The RTP-keyed and FrameId-keyed completion events are emitted at the same
+  // time, so that the two flows can be joined.
+  const std::vector<FlowEventRecorder::Event> rtp_events =
+      recorder.EventsFor(rtp_flow_id);
+  const std::vector<FlowEventRecorder::Event> frame_events =
+      recorder.EventsFor(frame_flow_id);
+  ASSERT_EQ(1u, rtp_events.size());
+  ASSERT_LE(4u, frame_events.size());
+  EXPECT_EQ(rtp_events.front().time, frame_events.front().time);
+  EXPECT_EQ(FlowType::kFlowBegin, frame_events.front().type);
+  EXPECT_EQ(FlowType::kFlowEnd, frame_events.back().type);
+  EXPECT_EQ(playout_time, frame_events.back().time);
+}
+#endif  // defined(ENABLE_TRACE_LOGGING)
 
 // This test ensures that frames played ahead of schedule are reported
 // accurately, without causing any errors.

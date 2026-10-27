@@ -23,6 +23,7 @@
 #include "cast/streaming/rtp_time.h"
 #include "platform/api/task_runner.h"
 #include "platform/api/time.h"
+#include "platform/base/trace_logging_types.h"
 #include "util/thread_annotations.h"
 #include "util/weak_ptr.h"
 
@@ -86,6 +87,9 @@ class StreamingAv1Encoder : public StreamingVideoEncoder {
     Clock::time_point capture_end_time;
     Clock::time_point reference_time;
     RtpTimeTicks rtp_timestamp;
+    // Trace flow ID for this frame (see
+    // cast/streaming/public/frame_trace_ids.h).
+    TraceId flow_id = kUnsetTraceId;
     std::function<void(Stats)> stats_callback;
   };
 

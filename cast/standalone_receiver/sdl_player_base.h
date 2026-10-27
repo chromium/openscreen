@@ -18,6 +18,7 @@
 #include "platform/api/task_runner.h"
 #include "platform/api/time.h"
 #include "platform/base/error.h"
+#include "platform/base/trace_logging_types.h"
 
 namespace openscreen::cast {
 
@@ -108,6 +109,9 @@ class SDLPlayerBase : public Receiver::Consumer, public Decoder::Client {
   void OnFrameDecoded(FrameId frame_id, const AVFrame& frame) final;
   void OnDecodeError(FrameId frame_id, const std::string& message) final;
 
+  // Returns the trace flow ID for the frame with the given `frame_id`.
+  TraceId GetFlowId(FrameId frame_id) const;
+
   // Calls RenderNextFrame() on the next available decoded frame, and schedules
   // its presentation. If no decoded frame is available, RenderWhileIdle() is
   // called instead.
@@ -167,9 +171,6 @@ class SDLPlayerBase : public Receiver::Consumer, public Decoder::Client {
   Alarm decode_alarm_;
   Alarm render_alarm_;
   Alarm presentation_alarm_;
-
-  FrameId current_frame_id_{FrameId::first() - 1};
-  FrameId last_enqueued_frame_id_{FrameId::first() - 1};
 
   // Maximum number of frames in the decode/render pipeline. This limit is about
   // making sure the player uses resources efficiently: It is better for frames
