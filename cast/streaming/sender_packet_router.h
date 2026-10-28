@@ -72,6 +72,11 @@ class SenderPacketRouter : public BandwidthEstimator,
     // packet RTP timestamps for metrics purposes.
     virtual RtpTimeTicks GetLastRtpTimestamp() const = 0;
 
+    // Returns true if the last packet returned by
+    // GetRtpPacketForImmediateSend() had been sent before, meaning that send
+    // was a retransmission. Used for metrics.
+    virtual bool WasLastRtpPacketRetransmission() const = 0;
+
     // Returns the type of stream that this sender is providing.
     virtual StreamType GetStreamType() const = 0;
 

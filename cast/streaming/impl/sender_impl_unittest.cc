@@ -1569,5 +1569,36 @@ TEST_F(SenderTest, GetLastRtpTimestamp) {
   EXPECT_EQ(router_sender->GetLastRtpTimestamp(), frame.rtp_timestamp);
 }
 
+// Tests that the Sender reports whether the last RTP packet it provided was a
+// retransmission, so that the packet router can label it in statistics.
+TEST_F(SenderTest, ReportsWhetherLastRtpPacketWasRetransmission) {
+  auto* router_sender = static_cast<SenderPacketRouter::Sender*>(sender());
+  EXPECT_FALSE(router_sender->WasLastRtpPacketRetransmission());
+
+  // A small frame fits in a single RTP packet.
+  EncodedFrameWithBuffer frame;
+  PopulateFrameWithDefaults(FrameId::first(), FakeClock::now() - kCaptureDelay,
+                            0, 100, &frame);
+  ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
+
+  std::vector<uint8_t> buffer(kMaxRtpPacketSizeForIpv4UdpOnEthernet);
+  const Clock::time_point first_send_time = FakeClock::now();
+  ASSERT_FALSE(
+      router_sender
+          ->GetRtpPacketForImmediateSend(
+              first_send_time, ByteBuffer(buffer.data(), buffer.size()))
+          .empty());
+  EXPECT_FALSE(router_sender->WasLastRtpPacketRetransmission());
+
+  // With no feedback from the Receiver, the Sender eventually re-sends the last
+  // packet as a kickstart. That send is a retransmission.
+  ASSERT_FALSE(router_sender
+                   ->GetRtpPacketForImmediateSend(
+                       first_send_time + seconds(10),
+                       ByteBuffer(buffer.data(), buffer.size()))
+                   .empty());
+  EXPECT_TRUE(router_sender->WasLastRtpPacketRetransmission());
+}
+
 }  // namespace
 }  // namespace openscreen::cast

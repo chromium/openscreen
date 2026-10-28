@@ -23,7 +23,9 @@ void StatisticsCollector::CollectPacketSentEvent(ByteView packet,
 
   // Populate the new PacketEvent by parsing the wire-format `packet`.
   event.timestamp = now_();
-  event.type = StatisticsEvent::Type::kPacketSentToNetwork;
+  event.type = metadata.is_retransmission
+                   ? StatisticsEvent::Type::kPacketRetransmitted
+                   : StatisticsEvent::Type::kPacketSentToNetwork;
 
   BigEndianReader reader(packet.data(), packet.size());
   bool success = reader.Skip(4);

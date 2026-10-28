@@ -80,8 +80,13 @@ enum class StatisticType {
   // Unix time in milliseconds of last event since reset.
   kLastEventTimeMs,
 
+  // Number of packets that were sent again after their first send, either
+  // because the receiver NACKed them or as a kickstart. These packets are not
+  // counted in kNumPacketsSent or kPacketTransmissionRateKbps.
+  kNumPacketsRetransmitted,
+
   // The number of statistic types.
-  kNumTypes = kLastEventTimeMs + 1
+  kNumTypes = kNumPacketsRetransmitted + 1
 };
 
 enum class HistogramType {

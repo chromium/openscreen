@@ -21,6 +21,9 @@ struct PacketMetadata {
 
   // The RTP timestamp associated with this packet.
   RtpTimeTicks rtp_timestamp;
+
+  // Whether this RTP packet was sent before, and this send is a retransmission.
+  bool is_retransmission = false;
 };
 
 // This class is responsible for gathering packet and frame statistics using its

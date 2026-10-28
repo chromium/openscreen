@@ -130,6 +130,7 @@ class SenderImpl final : public Sender,
                                           ByteBuffer buffer) final;
   Clock::time_point GetRtpResumeTime() final;
   RtpTimeTicks GetLastRtpTimestamp() const final;
+  bool WasLastRtpPacketRetransmission() const final;
   StreamType GetStreamType() const final;
 
   // CompoundRtcpParser::Client implementation.
@@ -228,6 +229,10 @@ class SenderImpl final : public Sender,
   // time. This includes up-to-date lip-sync information, and packet and byte
   // count stats.
   RtcpSenderReport pending_sender_report_;
+
+  // Whether the last packet returned by GetRtpPacketForImmediateSend() had
+  // been sent before.
+  bool last_rtp_packet_was_retransmission_ = false;
 
   ClockNowFunctionPtr now_;
 

@@ -100,6 +100,30 @@ TEST_F(StatisticsCollectorTest, CanCollectPacketSentEvents) {
   EXPECT_EQ(StatisticsEvent::MediaType::kVideo, events[1].media_type);
 }
 
+TEST_F(StatisticsCollectorTest, CollectsRetransmittedPacketsAsRetransmitted) {
+  constexpr std::array<uint8_t, 20> kPacket{
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+
+  collector_.CollectPacketSentEvent(
+      ByteView(kPacket), PacketMetadata{.stream_type = StreamType::kVideo,
+                                        .rtp_timestamp = RtpTimeTicks(1234),
+                                        .is_retransmission = false});
+  collector_.CollectPacketSentEvent(
+      ByteView(kPacket), PacketMetadata{.stream_type = StreamType::kVideo,
+                                        .rtp_timestamp = RtpTimeTicks(1234),
+                                        .is_retransmission = true});
+
+  const std::vector<PacketEvent> events = collector_.TakeRecentPacketEvents();
+  ASSERT_EQ(2u, events.size());
+  EXPECT_EQ(StatisticsEvent::Type::kPacketSentToNetwork, events[0].type);
+  EXPECT_EQ(StatisticsEvent::Type::kPacketRetransmitted, events[1].type);
+
+  // Apart from the type, both events describe the same packet.
+  EXPECT_EQ(events[0].packet_id, events[1].packet_id);
+  EXPECT_EQ(events[0].rtp_timestamp, events[1].rtp_timestamp);
+  EXPECT_EQ(events[0].size, events[1].size);
+}
+
 TEST_F(StatisticsCollectorTest, CanCollectFrameEvents) {
   // clang-format off
   constexpr FrameEvent kEventOne(

@@ -144,6 +144,7 @@ class MockSender : public SenderPacketRouter::Sender {
               (override));
   MOCK_METHOD(Clock::time_point, GetRtpResumeTime, (), (override));
   MOCK_METHOD(RtpTimeTicks, GetLastRtpTimestamp, (), (const, override));
+  MOCK_METHOD(bool, WasLastRtpPacketRetransmission, (), (const, override));
   MOCK_METHOD(StreamType, GetStreamType, (), (const, override));
 };
 
@@ -417,6 +418,37 @@ TEST_F(SenderPacketRouterTest, SchedulesPeriodicTransmissionOfRTCPPackets) {
   }
 
   router()->OnSenderDestroyed(kAudioReceiverSsrc);
+}
+
+// Tests that the SenderPacketRouter tells the Environment which RTP packets
+// are retransmissions, so that they can be counted separately in statistics.
+TEST_F(SenderPacketRouterTest, MarksRetransmittedRtpPacketsInMetadata) {
+  env()->set_remote_endpoint(kRemoteEndpoint);
+  router()->OnSenderCreated(kVideoReceiverSsrc, video_sender());
+
+  std::vector<bool> retransmission_flags;
+  EXPECT_CALL(*env(), SendPacket(_, _))
+      .WillRepeatedly([&](ByteView packet, PacketMetadata metadata) {
+        retransmission_flags.push_back(metadata.is_retransmission);
+      });
+
+  // The Sender provides two packets: a first send, then a retransmission.
+  EXPECT_CALL(*video_sender(), GetRtpPacketForImmediateSend(_, _))
+      .WillOnce(&MakeFakePacket)
+      .WillOnce(&MakeFakePacket)
+      .WillOnce(&ToEmptyPacketBuffer);
+  EXPECT_CALL(*video_sender(), WasLastRtpPacketRetransmission())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  ON_CALL(*video_sender(), GetRtpResumeTime())
+      .WillByDefault(Return(SenderPacketRouter::kNever));
+
+  router()->RequestRtpSend(kVideoReceiverSsrc);
+  RunTasksUntilIdle();
+
+  EXPECT_THAT(retransmission_flags, testing::ElementsAre(false, true));
+
+  router()->OnSenderDestroyed(kVideoReceiverSsrc);
 }
 
 // Tests that the SenderPacketRouter schedules RTP packet bursts from a single

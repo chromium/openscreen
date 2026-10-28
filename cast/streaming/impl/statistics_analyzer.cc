@@ -427,6 +427,11 @@ SenderStats::StatisticsList StatisticsAnalyzer::ConstructStatisticsList(
                           StatisticType::kNumPacketsReceived, media_type,
                           stats_list);
 
+  // kNumPacketsRetransmitted
+  PopulatePacketCountStat(StatisticsEvent::Type::kPacketRetransmitted,
+                          StatisticType::kNumPacketsRetransmitted, media_type,
+                          stats_list);
+
   // kTimeSinceLastReceiverResponseMs
   // kFirstEventTimeMs
   // kLastEventTimeMs

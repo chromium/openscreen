@@ -345,6 +345,7 @@ ByteBuffer SenderImpl::GetRtpPacketForImmediateSend(Clock::time_point send_time,
   const bool is_retransmission =
       chosen.slot->packet_sent_times[chosen.packet_id] !=
       SenderPacketRouter::kNever;
+  last_rtp_packet_was_retransmission_ = is_retransmission;
 
   if (should_kickstart) {
     OSP_LOG_INFO << "Sending KICKSTART for frame "
@@ -383,6 +384,10 @@ Clock::time_point SenderImpl::GetRtpResumeTime() {
 
 RtpTimeTicks SenderImpl::GetLastRtpTimestamp() const {
   return pending_sender_report_.rtp_timestamp;
+}
+
+bool SenderImpl::WasLastRtpPacketRetransmission() const {
+  return last_rtp_packet_was_retransmission_;
 }
 
 StreamType SenderImpl::GetStreamType() const {

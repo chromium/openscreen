@@ -66,7 +66,8 @@ extern const EnumNameTable<StatisticType,
          {"NumPacketsSent", StatisticType::kNumPacketsSent},
          {"NumPacketsReceived", StatisticType::kNumPacketsReceived},
          {"FirstEventTimeMs", StatisticType::kFirstEventTimeMs},
-         {"LastEventTimeMs", StatisticType::kLastEventTimeMs}}};
+         {"LastEventTimeMs", StatisticType::kLastEventTimeMs},
+         {"NumPacketsRetransmitted", StatisticType::kNumPacketsRetransmitted}}};
 
 // External linkage for unit test
 extern const EnumNameTable<HistogramType,

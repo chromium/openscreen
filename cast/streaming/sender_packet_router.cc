@@ -224,7 +224,9 @@ SenderPacketRouter::SendCounts SenderPacketRouter::SendJustTheRtpPackets(
       environment_->SendPacket(
           ByteView(packet.data(), packet.size()),
           PacketMetadata{.stream_type = entry.sender->GetStreamType(),
-                         .rtp_timestamp = entry.sender->GetLastRtpTimestamp()});
+                         .rtp_timestamp = entry.sender->GetLastRtpTimestamp(),
+                         .is_retransmission =
+                             entry.sender->WasLastRtpPacketRetransmission()});
       sent.num_bytes += static_cast<int>(packet.size());
     }
     entry.next_rtp_send_time = entry.sender->GetRtpResumeTime();

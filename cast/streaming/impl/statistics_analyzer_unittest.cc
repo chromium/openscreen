@@ -480,6 +480,41 @@ TEST_F(StatisticsAnalyzerTest, FrameEncodedAndPacketSent) {
                    (kDefaultStatIntervalMs * kDefaultNumEvents)));
 }
 
+TEST_F(StatisticsAnalyzerTest, PacketsRetransmitted) {
+  analyzer_->ScheduleAnalysis();
+
+  // Send every packet once, and send every fourth packet a second time.
+  RtpTimeTicks rtp_timestamp;
+  int expected_retransmitted = 0;
+  for (int i = 0; i < kDefaultNumEvents; i++) {
+    collector_->CollectPacketEvent(MakePacketEvent(i, rtp_timestamp));
+    if (i % 4 == 0) {
+      PacketEvent retransmission = MakePacketEvent(i, rtp_timestamp);
+      retransmission.type = StatisticsEvent::Type::kPacketRetransmitted;
+      collector_->CollectPacketEvent(retransmission);
+      ++expected_retransmitted;
+    }
+    fake_clock_.Advance(milliseconds(kDefaultStatIntervalMs));
+    rtp_timestamp += RtpTimeDelta::FromTicks(90);
+  }
+
+  EXPECT_CALL(stats_client_, OnStatisticsUpdated(_))
+      .WillOnce([&](const SenderStats& stats) {
+        // Retransmissions are counted separately from first sends.
+        ExpectStatEq(stats.video_statistics, StatisticType::kNumPacketsSent,
+                     kDefaultNumEvents);
+        ExpectStatEq(stats.video_statistics,
+                     StatisticType::kNumPacketsRetransmitted,
+                     expected_retransmitted);
+        ExpectStatEq(stats.audio_statistics,
+                     StatisticType::kNumPacketsRetransmitted, 0);
+      });
+
+  fake_clock_.Advance(
+      milliseconds(kDefaultStatsAnalysisIntervalMs -
+                   (kDefaultStatIntervalMs * kDefaultNumEvents)));
+}
+
 TEST_F(StatisticsAnalyzerTest, PacketSentAndReceived) {
   analyzer_->ScheduleAnalysis();
 
