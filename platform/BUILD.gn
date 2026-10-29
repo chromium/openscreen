@@ -98,8 +98,9 @@ config("standalone_config") {
 # Disable standalone implementation for IOS. It is not supported.
 if (!is_ios) {
   openscreen_source_set("standalone_impl") {
-    # Setting the target as testonly ensures that the standalone implementation
-    # is not included in Chromium.
+    # Note: `testonly = true` prevents production Chromium targets from
+    # depending on `standalone_impl`, though `cast_receiver` and Ninja's `all`
+    # target still build it when `build_with_chromium` is true.
     if (build_with_chromium) {
       testonly = true
     }
@@ -182,20 +183,22 @@ if (!is_ios) {
         "impl/udp_socket_reader_posix.cc",
         "impl/udp_socket_reader_posix.h",
       ]
-      sources += [
-        "impl/quiche_web_transport_client.cc",
-        "impl/quiche_web_transport_client.h",
-        "impl/quiche_web_transport_server.cc",
-        "impl/quiche_web_transport_server.h",
-        "impl/quiche_web_transport_session.cc",
-        "impl/quiche_web_transport_session.h",
-        "impl/quiche_web_transport_stream.cc",
-        "impl/quiche_web_transport_stream.h",
-      ]
-      deps += [
-        "../third_party/quiche",
-        "impl/quic:quic_adapters",
-      ]
+      if (!build_with_chromium) {
+        sources += [
+          "impl/quiche_web_transport_client.cc",
+          "impl/quiche_web_transport_client.h",
+          "impl/quiche_web_transport_server.cc",
+          "impl/quiche_web_transport_server.h",
+          "impl/quiche_web_transport_session.cc",
+          "impl/quiche_web_transport_session.h",
+          "impl/quiche_web_transport_stream.cc",
+          "impl/quiche_web_transport_stream.h",
+        ]
+        deps += [
+          "../third_party/quiche",
+          "impl/quic:quic_adapters",
+        ]
+      }
     }
 
     if (use_perfetto) {

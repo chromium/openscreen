@@ -68,17 +68,17 @@ group("gn_all") {
       "discovery:dnssd",
       "discovery:mdns",
       "discovery:public",
-      "osp",
       "platform",
-
-      # Quiche currently has an issue around logging macros on Windows.
-      "third_party/quiche",
     ]
     if (!build_with_chromium) {
       deps += [
         "cast/standalone_sender:cast_sender",
+        "osp",
         "osp:osp_demo",
         "third_party/protobuf:protoc($host_toolchain)",
+
+        # Quiche currently has an issue around logging macros on Windows.
+        "third_party/quiche",
         "third_party/zlib",
       ]
       if (build_python_bindings) {
@@ -152,6 +152,7 @@ if (!build_with_chromium && is_posix) {
       public_deps += [ "cast/common:discovery_e2e_test" ]
     }
   }
+
   openscreen_executable("e2e_tests") {
     testonly = true
     deps = [
