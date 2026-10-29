@@ -106,6 +106,14 @@ class ReceiverImpl : public Receiver,
   // packets to be sent periodically for the life of this Receiver.
   void SendRtcp();
 
+  // Ensures `rtcp_alarm_` is scheduled to send NACK/ACK feedback no later than
+  // `std::max(last_rtcp_send_time_, reference_time) + kNackFeedbackInterval`.
+  // `rtcp_alarm_` holds at most one pending task, so rescheduling replaces any
+  // later timer (such as the 500 ms `kRtcpReportInterval` keepalive) without
+  // queuing duplicate RTCP packets, and is a no-op if an RTCP packet is already
+  // scheduled at or before the target time.
+  void ScheduleNackFeedback(Clock::time_point reference_time);
+
   // Helpers to map the given `frame_id` to the element in the `pending_frames_`
   // circular queue. There are both const and non-const versions, but neither
   // mutate any state (i.e., they are just look-ups).
@@ -169,6 +177,7 @@ class ReceiverImpl : public Receiver,
   // the Sender.
   Alarm rtcp_alarm_;
   Clock::time_point last_rtcp_send_time_ = Clock::time_point::min();
+  Clock::time_point next_rtcp_send_time_ = Clock::time_point::max();
 
   // The last Sender Report received and when the packet containing it had
   // arrived. This contains lip-sync timestamps used as part of the calculation

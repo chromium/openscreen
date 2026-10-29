@@ -749,7 +749,11 @@ TEST_F(ReceiverTest, DropsLateFrames) {
   // never notify the consumer via the callback, nor report that any frames are
   // ready, because none of the frames have been completely received.
   EXPECT_CALL(*consumer(), OnFramesReady(_)).Times(0);
-  EXPECT_CALL(*sender(), OnReceiverCheckpoint(_, _)).Times(0);
+  EXPECT_CALL(*sender(),
+              OnReceiverCheckpoint(FrameId::leader(), kTargetPlayoutDelay))
+      .Times(AtLeast(0));
+  EXPECT_CALL(*sender(), OnReceiverCheckpoint(Gt(FrameId::leader()), _))
+      .Times(0);
   for (int i = 0; i <= 7; ++i) {
     sender()->SetFrameBeingSent(frames[i]);
     // Assumption: There are at least three packets in each frame, else the test
@@ -767,7 +771,11 @@ TEST_F(ReceiverTest, DropsLateFrames) {
   // every prior frame. In other words, it cannot ignore any possibility of a
   // target playout delay change from the Sender.
   EXPECT_CALL(*consumer(), OnFramesReady(_)).Times(0);
-  EXPECT_CALL(*sender(), OnReceiverCheckpoint(_, _)).Times(0);
+  EXPECT_CALL(*sender(),
+              OnReceiverCheckpoint(FrameId::leader(), kTargetPlayoutDelay))
+      .Times(AtLeast(0));
+  EXPECT_CALL(*sender(), OnReceiverCheckpoint(Gt(FrameId::leader()), _))
+      .Times(0);
   for (int i = 6; i <= 7; ++i) {
     sender()->SetFrameBeingSent(frames[i]);
     sender()->SendRtpPackets(sender()->GetAllPacketIds());
@@ -782,7 +790,11 @@ TEST_F(ReceiverTest, DropsLateFrames) {
   // still cannot drop any frames because it doesn't know whether Frame 5 had a
   // target playout delay change.
   EXPECT_CALL(*consumer(), OnFramesReady(_)).Times(0);
-  EXPECT_CALL(*sender(), OnReceiverCheckpoint(_, _)).Times(0);
+  EXPECT_CALL(*sender(),
+              OnReceiverCheckpoint(FrameId::leader(), kTargetPlayoutDelay))
+      .Times(AtLeast(0));
+  EXPECT_CALL(*sender(), OnReceiverCheckpoint(Gt(FrameId::leader()), _))
+      .Times(0);
   for (int i = 0; i <= 7; ++i) {
     if (i == 5) {
       continue;
@@ -860,7 +872,11 @@ TEST_F(ReceiverTest, DropsLateFramesWithSkipping) {
   // never notify the consumer via the callback, nor report that any frames are
   // ready, because none of the frames have been completely received.
   EXPECT_CALL(*consumer(), OnFramesReady(_)).Times(0);
-  EXPECT_CALL(*sender(), OnReceiverCheckpoint(_, _)).Times(0);
+  EXPECT_CALL(*sender(),
+              OnReceiverCheckpoint(FrameId::leader(), kTargetPlayoutDelay))
+      .Times(AtLeast(0));
+  EXPECT_CALL(*sender(), OnReceiverCheckpoint(Gt(FrameId::leader()), _))
+      .Times(0);
   for (int i = 0; i <= 7; ++i) {
     sender()->SetFrameBeingSent(frames[i]);
     // Assumption: There are at least three packets in each frame, else the test
@@ -909,6 +925,41 @@ TEST_F(ReceiverTest, DropsLateFramesWithSkipping) {
   AdvanceClockAndRunTasks(kOneWayNetworkDelay);
   testing::Mock::VerifyAndClearExpectations(consumer());
   testing::Mock::VerifyAndClearExpectations(sender());
+}
+
+// Tests that the Receiver schedules and reschedules periodic NACK feedback at
+// kNackFeedbackInterval (30 ms) when incomplete frames exist in the queue,
+// rather than waiting for kRtcpReportInterval (500 ms).
+TEST_F(ReceiverTest, SendsPeriodicNacksForIncompleteFrames) {
+  const Clock::time_point start_time = FakeClock::now();
+  ExchangeInitialReportPackets(start_time);
+
+  // Send only packet 0 of Frame 0 so that Frame 0 is incomplete in the queue.
+  sender()->SetFrameBeingSent(SimulatedFrame(start_time, 0));
+  const std::vector<FramePacketId> all_packets = sender()->GetAllPacketIds();
+  ASSERT_GE(all_packets.size(), 3u);
+  sender()->SendRtpPackets({FramePacketId{0}});
+  AdvanceClockAndRunTasks(kOneWayNetworkDelay);
+
+  // Build expected missing packet list (packets 1..N-1 of Frame 0).
+  std::vector<PacketNack> expected_nacks;
+  for (size_t i = 1; i < all_packets.size(); ++i) {
+    expected_nacks.push_back(
+        PacketNack{FrameId::first(), static_cast<FramePacketId>(i)});
+  }
+
+  // The Receiver should send NACK feedback after kNackFeedbackInterval (30 ms),
+  // overriding the 500 ms keepalive scheduled by ExchangeInitialReportPackets()
+  // (interval == 0), and continue re-arming at kNackFeedbackInterval inside
+  // SendRtcp() on subsequent intervals (interval == 1, 2).
+  static constexpr milliseconds kNackFeedbackInterval(30);
+  for (int interval = 0; interval < 3; ++interval) {
+    EXPECT_CALL(*sender(), OnReceiverIsMissingPackets(expected_nacks)).Times(1);
+    AdvanceClockAndRunTasks(kNackFeedbackInterval + (interval == 0
+                                                         ? kOneWayNetworkDelay
+                                                         : milliseconds(0)));
+    testing::Mock::VerifyAndClearExpectations(sender());
+  }
 }
 
 // Verifies that a playout event is correctly reported to the sender.

@@ -304,7 +304,8 @@ void ReceiverImpl::OnReceivedRtpPacket(Clock::time_point arrival_time,
   // Extend the range of frames known to this Receiver, within the capacity of
   // this Receiver's queue. Prepare the FrameCollectors to receive any
   // newly-discovered frames.
-  if (part->frame_id > latest_frame_expected_) {
+  const bool is_new_latest_frame = part->frame_id > latest_frame_expected_;
+  if (is_new_latest_frame) {
     const FrameId max_allowed_frame_id =
         last_frame_consumed_ + kMaxUnackedFrames;
     if (part->frame_id > max_allowed_frame_id) {
@@ -338,8 +339,13 @@ void ReceiverImpl::OnReceivedRtpPacket(Clock::time_point arrival_time,
   PendingFrame& pending_frame = GetQueueEntry(part->frame_id);
   FrameCollector& collector = pending_frame.collector;
   if (collector.is_complete()) {
-    // An extra, redundant `packet` was received. Do nothing since the frame was
-    // already complete.
+    // An extra, redundant `packet` was received. If an earlier frame is still
+    // incomplete (for example, when the Sender sends a KICKSTART packet for the
+    // latest frame), schedule NACK feedback instead of waiting on the 500 ms
+    // keepalive timer.
+    if (checkpoint_frame() < latest_frame_expected_) {
+      ScheduleNackFeedback(last_rtcp_send_time_);
+    }
     RECEIVER_VLOG << "ignoring redundant packet for frame " << part->frame_id;
     return;
   }
@@ -392,6 +398,18 @@ void ReceiverImpl::OnReceivedRtpPacket(Clock::time_point arrival_time,
   }
 
   if (!collector.is_complete()) {
+    if (part->frame_id > checkpoint_frame() + 1) {
+      // A packet for a newer frame arrived while an earlier frame is still
+      // incomplete, meaning the Sender has already moved past the earlier
+      // frame. Schedule NACK feedback as soon as rate-limiting allows.
+      ScheduleNackFeedback(last_rtcp_send_time_);
+    } else if (is_new_latest_frame) {
+      // The first packet of `checkpoint_frame() + 1` arrived, and the frame
+      // spans multiple packets. Pull the 500 ms keepalive timer down to
+      // `arrival_time + kNackFeedbackInterval` so missing packets are NACKed
+      // promptly if the rest of the frame does not arrive in time.
+      ScheduleNackFeedback(arrival_time);
+    }
     return;  // Wait for the rest of the packets to come in.
   }
   // The frame is now complete. Record this on both the Sender's flow for this
@@ -421,6 +439,12 @@ void ReceiverImpl::OnReceivedRtpPacket(Clock::time_point arrival_time,
     // Make sure we provide a FrameAckSent event to the sender later.
     pending_frame_acks_.push_back(part->rtp_timestamp);
     AdvanceCheckpoint(part->frame_id);
+  } else {
+    // A newer frame completed out-of-order while `checkpoint_frame() + 1` is
+    // still incomplete, so `AdvanceCheckpoint()` did not run `SendRtcp()`.
+    // Schedule NACK/ACK feedback at the NACK interval rather than waiting on
+    // the 500 ms keepalive timer.
+    ScheduleNackFeedback(last_rtcp_send_time_);
   }
 
   // Since a frame has become complete, schedule a check to see whether this or
@@ -505,6 +529,8 @@ void ReceiverImpl::SendRtcp() {
   }
 
   // Build and send a compound RTCP packet.
+  const Clock::duration interval =
+      (packet_nacks.empty() ? kRtcpReportInterval : kNackFeedbackInterval);
   rtcp_builder_->IncludeFeedbackInNextPacket(std::move(packet_nacks),
                                              std::move(frame_acks));
   last_rtcp_send_time_ = now_();
@@ -515,9 +541,18 @@ void ReceiverImpl::SendRtcp() {
   // not called within some bounded amount of time. While incomplete frames
   // exist in the queue, send RTCP packets (with ACK/NACK feedback) frequently.
   // When there are no incomplete frames, use a longer "keepalive" interval.
-  const Clock::duration interval =
-      (packet_nacks.empty() ? kRtcpReportInterval : kNackFeedbackInterval);
-  rtcp_alarm_.Schedule([this] { SendRtcp(); }, last_rtcp_send_time_ + interval);
+  next_rtcp_send_time_ = last_rtcp_send_time_ + interval;
+  rtcp_alarm_.Schedule([this] { SendRtcp(); }, next_rtcp_send_time_);
+}
+
+void ReceiverImpl::ScheduleNackFeedback(Clock::time_point reference_time) {
+  const Clock::time_point desired_time =
+      std::max(last_rtcp_send_time_, reference_time) + kNackFeedbackInterval;
+  if (desired_time >= next_rtcp_send_time_) {
+    return;
+  }
+  next_rtcp_send_time_ = desired_time;
+  rtcp_alarm_.Schedule([this] { SendRtcp(); }, next_rtcp_send_time_);
 }
 
 const ReceiverImpl::PendingFrame& ReceiverImpl::GetQueueEntry(
@@ -566,7 +601,7 @@ milliseconds ReceiverImpl::ResolveTargetPlayoutDelay(FrameId frame_id) const {
   // other words, every unconsumed frame in the queue, up to (and including)
   // `frame_id`, must have an assigned estimated_capture_time.
   if (!config_.allow_skip_to_keyframe) {
-    for (FrameId f = first_possible; f <= frame_id; ++f) {
+    for (FrameId f = last_frame_consumed_ + 1; f <= frame_id; ++f) {
       OSP_CHECK(GetQueueEntry(f).estimated_capture_time)
           << " don't know whether there was a playout delay change for frame "
           << f;
