@@ -81,7 +81,7 @@ vars = {
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling googletest
   # and whatever else without interference from each other.
-  'googletest_revision': 'eb2d85edd0bff7a712b6aff147cd9f789f0d7d0b',
+  'googletest_revision': 'a8380b01a25ebdb130097b607b3afed2a58d04ba',
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling boringssl
   # and whatever else without interference from each other.
