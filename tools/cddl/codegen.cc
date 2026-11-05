@@ -318,7 +318,6 @@ bool WriteStructMembers(
             "std::optional<" + CppTypeToString(*x.type->optional_type) + ">";
       } break;
       case CppType::Which::kDiscriminatedUnion: {
-        std::string cid = ToUnderscoreId(x.name);
         type_string = ToCamelCase(x.name);
         Write(os, "  struct {} {{\n", type_string);
         Write(os, "    {}();\n    ~{}();\n\n", type_string, type_string);
@@ -1031,8 +1030,6 @@ bool WriteEncoders(std::ostream& os, CppSymbolTable* table) {
         continue;
       std::string dunion_cpp_name = ToCamelCase(x.name);
       Write(os, "\n{}::{}::{}()\n", cpp_name, dunion_cpp_name, dunion_cpp_name);
-      std::string cid = ToUnderscoreId(x.name);
-      std::string type_name = ToCamelCase(x.name);
       Write(os,
             "    : which(Which::kUninitialized), placeholder_(false) {{}}\n");
 

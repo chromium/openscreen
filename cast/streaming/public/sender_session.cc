@@ -95,7 +95,6 @@ AudioStream CreateStream(int index,
                          bool use_android_rtp_hack,
                          std::optional<UdpSocket::DscpMode> dscp_mode,
                          bool /* supports_input_events */) {
-  std::vector<std::string> rtp_extensions;
   return AudioStream{
       Stream{index, Stream::Type::kAudioSource, config.channels,
              GetPayloadType(config.codec, use_android_rtp_hack),
