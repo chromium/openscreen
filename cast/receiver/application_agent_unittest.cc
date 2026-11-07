@@ -315,6 +315,43 @@ TEST_F(ApplicationAgentTest, HandlesPings) {
   EXPECT_EQ(kNumPings, num_pongs);
 }
 
+TEST_F(ApplicationAgentTest, HandlesPingsToTransportId) {
+  EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
+      .WillOnce([](CastSocket*, CastMessage message) {
+        const Json::Value payload =
+            ValidateAndParseMessage(message, kPlatformTransportId,
+                                    kPlatformSenderId, kHeartbeatNamespace);
+        EXPECT_EQ(json::Parse(R"({"type":"PONG"})").value(), payload);
+      });
+
+  const CastMessage message =
+      MakeCastMessage(kPlatformSenderId, kPlatformTransportId,
+                      kHeartbeatNamespace, R"({"type":"PING"})");
+  const auto result = sender_outbound()->Send(message);
+  ASSERT_TRUE(result.ok()) << result;
+}
+
+TEST_F(ApplicationAgentTest, HandlesPingsWithBinaryPayload) {
+  EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
+      .WillOnce([](CastSocket*, CastMessage message) {
+        const Json::Value payload =
+            ValidateAndParseMessage(message, kPlatformTransportId,
+                                    kPlatformSenderId, kHeartbeatNamespace);
+        EXPECT_EQ(json::Parse(R"({"type":"PONG"})").value(), payload);
+      });
+
+  CastMessage message;
+  message.set_protocol_version(kDefaultOutgoingMessageVersion);
+  message.set_source_id(kPlatformSenderId);
+  message.set_destination_id(kPlatformTransportId);
+  message.set_namespace_(kHeartbeatNamespace);
+  message.set_payload_type(proto::CastMessage_PayloadType_STRING);
+  message.set_payload_binary(R"({"type":"PING"})");
+
+  const auto result = sender_outbound()->Send(message);
+  ASSERT_TRUE(result.ok()) << result;
+}
+
 TEST_F(ApplicationAgentTest, HandlesGetAppAvailability) {
   // Send the request before any apps have been registered. Expect an
   // "unavailable" response.

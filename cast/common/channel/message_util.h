@@ -39,6 +39,7 @@ static constexpr char kDiscoveryNamespace[] =
 // Sender and receiver IDs to use for platform messages.
 inline constexpr char kPlatformSenderId[] = "sender-0";
 inline constexpr char kPlatformReceiverId[] = "receiver-0";
+inline constexpr char kPlatformTransportId[] = "transport-0";
 
 inline constexpr char kBroadcastId[] = "*";
 

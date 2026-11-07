@@ -38,6 +38,7 @@ ApplicationAgent::ApplicationAgent(
       message_port_(router_),
       device_id_(device_uuid) {
   router_.AddHandlerForLocalId(kPlatformReceiverId, this);
+  router_.AddHandlerForLocalId(kPlatformTransportId, this);
 }
 
 ApplicationAgent::~ApplicationAgent() {
@@ -47,6 +48,7 @@ ApplicationAgent::~ApplicationAgent() {
   SwitchToApplication({}, {}, nullptr);
 
   router_.RemoveHandlerForLocalId(kPlatformReceiverId);
+  router_.RemoveHandlerForLocalId(kPlatformTransportId);
 }
 
 void ApplicationAgent::RegisterApplication(Application* app,
@@ -113,11 +115,13 @@ void ApplicationAgent::OnMessage(VirtualConnectionRouter* router,
       !message_port_.source_id().empty() &&
       message_port_.source_id() == message.destination_id()) {
     OSP_CHECK_NE(message_port_.source_id(), kPlatformReceiverId);
+    OSP_CHECK_NE(message_port_.source_id(), kPlatformTransportId);
     message_port_.OnMessage(router, socket, std::move(message));
     return;
   }
 
   if (message.destination_id() != kPlatformReceiverId &&
+      message.destination_id() != kPlatformTransportId &&
       message.destination_id() != kBroadcastId) {
     return;  // Message not for us.
   }
@@ -192,7 +196,8 @@ void ApplicationAgent::OnMessage(VirtualConnectionRouter* router,
 
 bool ApplicationAgent::IsConnectionAllowed(
     const VirtualConnection& virtual_conn) const {
-  if (virtual_conn.local_id == kPlatformReceiverId) {
+  if (virtual_conn.local_id == kPlatformReceiverId ||
+      virtual_conn.local_id == kPlatformTransportId) {
     return true;
   }
   if (!launched_app_ || message_port_.source_id().empty()) {
