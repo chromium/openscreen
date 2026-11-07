@@ -92,8 +92,10 @@ Error ReceiverImpl::ReportPlayoutEvent(FrameId frame_id,
 
   const PendingFrame& entry = GetQueueEntry(frame_id);
   OSP_CHECK(entry.estimated_capture_time);
+  const Clock::time_point target_playout_time =
+      *entry.estimated_capture_time + ResolveTargetPlayoutDelay(frame_id);
   const Clock::duration playout_delay =
-      std::max(Clock::duration(), playout_time - *entry.estimated_capture_time);
+      std::max(Clock::duration(), playout_time - target_playout_time);
 
   if (config_.are_receiver_event_logs_enabled) {
     AddEventToPendingLogs(

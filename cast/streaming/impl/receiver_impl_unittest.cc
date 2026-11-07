@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -948,7 +949,8 @@ TEST_F(ReceiverTest, ReportsFrameAckAndPacketReceivedEvents) {
               EqualsDuration(start_time + milliseconds(9)));
 }
 
-// Verifies that a playout event is correctly reported to the sender.
+// Verifies that a late playout event is correctly reported to the sender, with
+// the delay measured relative to the frame's target playout time.
 TEST_F(ReceiverTest, ReportPlayoutEvent) {
   const Clock::time_point start_time = FakeClock::now();
   ExchangeInitialReportPackets(start_time);
@@ -966,8 +968,17 @@ TEST_F(ReceiverTest, ReportPlayoutEvent) {
         logs.insert(logs.end(), new_logs.begin(), new_logs.end());
       });
 
+  // Play out the frame 20 ms after its target playout time. The Receiver
+  // estimates the capture time as the reference time plus the one-way network
+  // delay.
+  constexpr milliseconds kLateness(20);
+  const Clock::time_point target_playout_time = kPlayedOutFrame.reference_time +
+                                                kOneWayNetworkDelay +
+                                                kTargetPlayoutDelay;
+  AdvanceClockAndRunTasks(target_playout_time + kLateness - now());
+  const Clock::time_point playout_time = now();
   receiver()->ReportPlayoutEvent(kPlayedOutFrame.frame_id,
-                                 kPlayedOutFrame.rtp_timestamp, now());
+                                 kPlayedOutFrame.rtp_timestamp, playout_time);
   AdvanceClockAndRunTasks(kRtcpReportInterval + kOneWayNetworkDelay);
 
   ASSERT_EQ(logs.size(), 1u);
@@ -978,9 +989,80 @@ TEST_F(ReceiverTest, ReportPlayoutEvent) {
   ASSERT_EQ(frame_log.messages.size(), 1u);
   const auto& event_log1 = frame_log.messages[0];
   EXPECT_EQ(event_log1.type, StatisticsEvent::Type::kFramePlayedOut);
-  EXPECT_THAT(event_log1.delay, EqualsDuration(milliseconds(9)));
-  EXPECT_THAT(event_log1.timestamp,
-              EqualsDuration(start_time + milliseconds(12)));
+  EXPECT_THAT(event_log1.delay, EqualsDuration(kLateness));
+  EXPECT_THAT(event_log1.timestamp, EqualsDuration(playout_time));
+}
+
+// Verifies that the reported delay uses the target playout delay in effect for
+// each played-out frame, including changes communicated by the Sender.
+TEST_F(ReceiverTest, ReportPlayoutEventUsesTargetPlayoutDelayOfFrame) {
+  const Clock::time_point start_time = FakeClock::now();
+  ExchangeInitialReportPackets(start_time);
+
+  // The Receiver requires frames in order, so receive and consume every frame
+  // up to and including the one that changes the target playout delay.
+  for (int i = 0; i <= SimulatedFrame::kPlayoutChangeAtFrame; ++i) {
+    ReceiveFrame(i, start_time, SimulatedFrame::GetExpectedPlayoutDelay(i),
+                 kRoundTripNetworkDelay);
+    ConsumeAndVerifyFrame(SimulatedFrame(start_time, i));
+  }
+  const SimulatedFrame kOldDelayFrame(
+      start_time, SimulatedFrame::kPlayoutChangeAtFrame - 1);
+  const SimulatedFrame kNewDelayFrame(start_time,
+                                      SimulatedFrame::kPlayoutChangeAtFrame);
+
+  const auto target_playout_time = [](const SimulatedFrame& frame) {
+    return frame.reference_time + kOneWayNetworkDelay +
+           SimulatedFrame::GetExpectedPlayoutDelay(frame.frame_id -
+                                                   FrameId::first());
+  };
+
+  std::vector<RtcpReceiverFrameLogMessage> logs;
+  EXPECT_CALL(*sender(), OnCastReceiverFrameLogMessages(_))
+      .WillRepeatedly([&](std::vector<RtcpReceiverFrameLogMessage> new_logs) {
+        logs.insert(logs.end(), new_logs.begin(), new_logs.end());
+      });
+
+  const auto reported_delay = [&](const SimulatedFrame& frame) {
+    for (const auto& frame_log : logs) {
+      if (frame_log.rtp_timestamp == frame.rtp_timestamp &&
+          frame_log.messages.size() == 1u &&
+          frame_log.messages[0].type ==
+              StatisticsEvent::Type::kFramePlayedOut) {
+        return std::optional<Clock::duration>(frame_log.messages[0].delay);
+      }
+    }
+    return std::optional<Clock::duration>();
+  };
+
+  // Play out both frames at the same time, after the old target playout delay
+  // but before the new one. Only the frame using the old delay is late.
+  constexpr milliseconds kLateness(20);
+  AdvanceClockAndRunTasks(target_playout_time(kOldDelayFrame) + kLateness -
+                          now());
+  receiver()->ReportPlayoutEvent(kOldDelayFrame.frame_id,
+                                 kOldDelayFrame.rtp_timestamp, now());
+  receiver()->ReportPlayoutEvent(kNewDelayFrame.frame_id,
+                                 kNewDelayFrame.rtp_timestamp, now());
+  AdvanceClockAndRunTasks(kRtcpReportInterval + kOneWayNetworkDelay);
+
+  ASSERT_EQ(logs.size(), 2u);
+  ASSERT_TRUE(reported_delay(kOldDelayFrame));
+  EXPECT_THAT(*reported_delay(kOldDelayFrame), EqualsDuration(kLateness));
+  ASSERT_TRUE(reported_delay(kNewDelayFrame));
+  EXPECT_THAT(*reported_delay(kNewDelayFrame), EqualsDuration(milliseconds(0)));
+  logs.clear();
+
+  // Play out the frame using the new delay after its target playout time.
+  AdvanceClockAndRunTasks(target_playout_time(kNewDelayFrame) + kLateness -
+                          now());
+  receiver()->ReportPlayoutEvent(kNewDelayFrame.frame_id,
+                                 kNewDelayFrame.rtp_timestamp, now());
+  AdvanceClockAndRunTasks(kRtcpReportInterval + kOneWayNetworkDelay);
+
+  ASSERT_EQ(logs.size(), 1u);
+  ASSERT_TRUE(reported_delay(kNewDelayFrame));
+  EXPECT_THAT(*reported_delay(kNewDelayFrame), EqualsDuration(kLateness));
 }
 
 // This test ensures that frames played ahead of schedule are reported
@@ -994,7 +1076,8 @@ TEST_F(ReceiverTest, ReportPlayoutEventTooEarly) {
   ReceiveFrame(0, start_time, kTargetPlayoutDelay, kRoundTripNetworkDelay);
   ConsumeAndVerifyFrame(kPlayedOutFrame);
 
-  // Intercept the playout event logs sent to the sender.
+  // Intercept the playout event logs sent to the sender. The frame is played
+  // out before its target playout time, so it is not late.
   EXPECT_CALL(*sender(), OnCastReceiverFrameLogMessages(_))
       .WillOnce([&](std::vector<RtcpReceiverFrameLogMessage> logs) {
         ASSERT_EQ(logs.size(), 1u);
@@ -1005,7 +1088,7 @@ TEST_F(ReceiverTest, ReportPlayoutEventTooEarly) {
         EXPECT_EQ(frame_log.messages[0].type,
                   StatisticsEvent::Type::kFramePlayedOut);
         EXPECT_THAT(frame_log.messages[0].delay,
-                    EqualsDuration(milliseconds(59)));
+                    EqualsDuration(milliseconds(0)));
         EXPECT_THAT(frame_log.messages[0].timestamp,
                     EqualsDuration(start_time + milliseconds(62)));
       });
@@ -1042,9 +1125,9 @@ TEST_F(ReceiverTest, ReportPlayoutEventForTooOldFrame) {
   EXPECT_EQ(error.code(), Error::Code::kParameterOutOfRange);
 }
 
-// This test verifies that when the calculated playout delay is negative, it
-// is correctly reported as zero (adjusting for the clock offset and network
-// delay).
+// This test verifies that when the calculated playout delay is negative (i.e.,
+// the frame is played out before its target playout time), it is correctly
+// reported as zero (adjusting for the clock offset and network delay).
 TEST_F(ReceiverTest, ReportPlayoutEventWithZeroDelay) {
   const Clock::time_point start_time = FakeClock::now();
   ExchangeInitialReportPackets(start_time);
@@ -1066,7 +1149,7 @@ TEST_F(ReceiverTest, ReportPlayoutEventWithZeroDelay) {
         const auto& event_log1 = frame_log.messages[0];
         EXPECT_EQ(event_log1.type, StatisticsEvent::Type::kFramePlayedOut);
 
-        EXPECT_THAT(event_log1.delay, EqualsDuration(milliseconds(9)));
+        EXPECT_THAT(event_log1.delay, EqualsDuration(milliseconds(0)));
         EXPECT_THAT(event_log1.timestamp,
                     EqualsDuration(start_time + 2 * kRoundTripNetworkDelay));
       });
