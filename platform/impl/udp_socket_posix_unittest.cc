@@ -9,8 +9,10 @@
 #include <memory>
 #include <utility>
 
+#include "build/build_config.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "platform/api/task_runner.h"
 #include "platform/api/time.h"
 #include "platform/test/fake_clock.h"
 #include "platform/test/fake_task_runner.h"
@@ -80,6 +82,110 @@ TEST(UdpSocketPosixTest, BindResolvesEphemeralPort) {
   EXPECT_EQ(endpoint_when_bound, socket->GetLocalEndpoint());
   EXPECT_TRUE(socket->IsIPv4());
   EXPECT_FALSE(socket->IsIPv6());
+}
+
+// Creates a UDP socket for `endpoint` that reports to `client`.
+std::unique_ptr<UdpSocket> CreateSocket(TaskRunner& task_runner,
+                                        UdpSocket::Client& client,
+                                        const IPEndpoint& endpoint) {
+  ErrorOr<std::unique_ptr<UdpSocket>> result =
+      UdpSocket::Create(task_runner, &client, endpoint);
+  EXPECT_TRUE(result) << result.error();
+  return result ? std::move(result.value()) : nullptr;
+}
+
+int GetSocketOption(const UdpSocket& socket, int option) {
+  int value = -1;
+  socklen_t optlen = sizeof(value);
+  const int res =
+      getsockopt(static_cast<const UdpSocketPosix&>(socket).GetHandle().fd,
+                 SOL_SOCKET, option, &value, &optlen);
+  EXPECT_EQ(res, 0);
+  return value;
+}
+
+TEST(UdpSocketPosixTest, DoesNotSetReuseAddressByDefault) {
+  FakeClock clock(Clock::now());
+  FakeTaskRunner task_runner(clock);
+  testing::StrictMock<FakeUdpSocket::MockClient> client;
+  const auto socket = CreateSocket(
+      task_runner, client, IPEndpoint{IPAddress::kV4LoopbackAddress(), 0});
+  ASSERT_TRUE(socket);
+  EXPECT_CALL(client, OnBound(_)).Times(1);
+  socket->Bind();
+
+  EXPECT_EQ(GetSocketOption(*socket, SO_REUSEADDR), 0);
+#if BUILDFLAG(IS_APPLE)
+  EXPECT_EQ(GetSocketOption(*socket, SO_REUSEPORT), 0);
+#endif  // BUILDFLAG(IS_APPLE)
+}
+
+TEST(UdpSocketPosixTest, SetsReuseAddressWhenEnabled) {
+  FakeClock clock(Clock::now());
+  FakeTaskRunner task_runner(clock);
+  testing::StrictMock<FakeUdpSocket::MockClient> client;
+  const auto socket = CreateSocket(
+      task_runner, client, IPEndpoint{IPAddress::kV4LoopbackAddress(), 0});
+  ASSERT_TRUE(socket);
+  socket->SetReuseAddress(true);
+  EXPECT_CALL(client, OnBound(_)).Times(1);
+  socket->Bind();
+
+  EXPECT_NE(GetSocketOption(*socket, SO_REUSEADDR), 0);
+#if BUILDFLAG(IS_APPLE)
+  EXPECT_NE(GetSocketOption(*socket, SO_REUSEPORT), 0);
+#endif  // BUILDFLAG(IS_APPLE)
+}
+
+// When address reuse is enabled on both sockets, they can bind the same port,
+// as required by mDNS.
+TEST(UdpSocketPosixTest, ReusableSocketsCanSharePort) {
+  FakeClock clock(Clock::now());
+  FakeTaskRunner task_runner(clock);
+
+  testing::StrictMock<FakeUdpSocket::MockClient> first_client;
+  const auto first_socket =
+      CreateSocket(task_runner, first_client,
+                   IPEndpoint{IPAddress::kV4LoopbackAddress(), 0});
+  ASSERT_TRUE(first_socket);
+  first_socket->SetReuseAddress(true);
+  EXPECT_CALL(first_client, OnBound(_)).Times(1);
+  first_socket->Bind();
+  const IPEndpoint bound_endpoint = first_socket->GetLocalEndpoint();
+  ASSERT_NE(bound_endpoint.port, 0);
+
+  testing::StrictMock<FakeUdpSocket::MockClient> second_client;
+  const auto second_socket =
+      CreateSocket(task_runner, second_client, bound_endpoint);
+  ASSERT_TRUE(second_socket);
+  second_socket->SetReuseAddress(true);
+  EXPECT_CALL(second_client, OnBound(_)).Times(1);
+  second_socket->Bind();
+}
+
+// When address reuse is disabled, the port assigned by the OS must not be
+// shareable with another socket, even one that requests address reuse.
+TEST(UdpSocketPosixTest, NonReusableSocketPortCannotBeShared) {
+  FakeClock clock(Clock::now());
+  FakeTaskRunner task_runner(clock);
+
+  testing::StrictMock<FakeUdpSocket::MockClient> first_client;
+  const auto first_socket =
+      CreateSocket(task_runner, first_client,
+                   IPEndpoint{IPAddress::kV4LoopbackAddress(), 0});
+  ASSERT_TRUE(first_socket);
+  EXPECT_CALL(first_client, OnBound(_)).Times(1);
+  first_socket->Bind();
+  const IPEndpoint bound_endpoint = first_socket->GetLocalEndpoint();
+  ASSERT_NE(bound_endpoint.port, 0);
+
+  testing::StrictMock<FakeUdpSocket::MockClient> second_client;
+  const auto second_socket =
+      CreateSocket(task_runner, second_client, bound_endpoint);
+  ASSERT_TRUE(second_socket);
+  second_socket->SetReuseAddress(true);
+  EXPECT_CALL(second_client, OnError(_, _)).Times(1);
+  second_socket->Bind();
 }
 
 }  // namespace

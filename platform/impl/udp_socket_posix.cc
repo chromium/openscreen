@@ -176,24 +176,27 @@ void UdpSocketPosix::Bind() {
     return;
   }
 
-  // This is effectively a boolean passed to setsockopt() to allow a future
-  // bind() on the same socket to succeed, even if the address is already in
-  // use. This is pretty much universally the desired behavior.
-  constexpr int reuse_addr = 1;
-  if (setsockopt(handle_.fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,
-                 sizeof(reuse_addr)) == -1) {
-    OnError(Error::Code::kSocketOptionSettingFailure);
-  }
+  // If `reuse_address_` is set, then set `SO_REUSEADDR` to allow future sockets
+  // to bind the same address. This is typically required for mDNS.
+  if (reuse_address_) {
+    static constexpr int reuse_addr = 1;
+    if (setsockopt(handle_.fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr,
+                   sizeof(reuse_addr)) == -1) {
+      OnError(Error::Code::kSocketOptionSettingFailure);
+      return;
+    }
 
 #if BUILDFLAG(IS_APPLE)
-  // On Mac, SO_REUSEADDR is not enough to allow a bind() on a reusable
-  // multicast socket.  We need to also set the option SO_REUSEPORT.
-  constexpr int reuse_port = 1;
-  if (setsockopt(handle_.fd, SOL_SOCKET, SO_REUSEPORT, &reuse_port,
-                 sizeof(reuse_port)) == -1) {
-    OnError(Error::Code::kSocketOptionSettingFailure);
-  }
+    // On Mac, SO_REUSEADDR is not enough to allow a bind() on a reusable
+    // multicast socket.  We need to also set the option SO_REUSEPORT.
+    static constexpr int reuse_port = 1;
+    if (setsockopt(handle_.fd, SOL_SOCKET, SO_REUSEPORT, &reuse_port,
+                   sizeof(reuse_port)) == -1) {
+      OnError(Error::Code::kSocketOptionSettingFailure);
+      return;
+    }
 #endif  // BUILDFLAG(IS_APPLE)
+  }
 
   bool is_bound = false;
   switch (version_) {
@@ -614,6 +617,11 @@ void UdpSocketPosix::SetDscp(UdpSocket::DscpMode mode) {
 
   OSP_DVLOG << __func__ << ": successfully set DSCP to "
             << static_cast<int>(mode);
+}
+
+void UdpSocketPosix::SetReuseAddress(bool enabled) {
+  OSP_CHECK(task_runner_->IsRunningOnTaskRunner());
+  reuse_address_ = enabled;
 }
 
 void UdpSocketPosix::SetReceiveBufferSize(size_t size) {

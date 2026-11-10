@@ -140,6 +140,13 @@ class UdpSocket {
   // Sets the DSCP value to use for all messages sent from this socket.
   virtual void SetDscp(DscpMode mode) = 0;
 
+  // Optional: Sets whether Bind() allows the local address and port to be
+  // shared with other sockets (e.g., SO_REUSEADDR on POSIX). Typically set to
+  // true for applications with port requirements (e.g., mDNS). Must be called
+  // before Bind(). Defaults to false. Implementations may ignore this if not
+  // supported by the underlying platform.
+  virtual void SetReuseAddress(bool enabled) {}
+
   // Optional: Sets the size of the receive and send buffers in bytes.
   // Implementations may ignore this if not supported by the underlying
   // platform.

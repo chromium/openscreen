@@ -45,6 +45,7 @@ class UdpSocketPosix : public UdpSocket {
                           NetworkInterfaceIndex ifindex) override;
   void SendMessage(ByteView data, const IPEndpoint& dest) override;
   void SetDscp(DscpMode mode) override;
+  void SetReuseAddress(bool enabled) override;
   void SetReceiveBufferSize(size_t size) override;
   void SetSendBufferSize(size_t size) override;
 
@@ -87,6 +88,9 @@ class UdpSocketPosix : public UdpSocket {
   // ReceiveMessage()), while `local_endpoint_` may be rewritten on the task
   // runner thread.
   const Version version_;
+
+  // Whether Bind() sets SO_REUSEADDR (and SO_REUSEPORT on Apple platforms).
+  bool reuse_address_ = false;
 
   WeakPtrFactory<UdpSocketPosix> weak_factory_{this};
 

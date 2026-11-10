@@ -32,6 +32,13 @@ Environment::Environment(ClockNowFunctionPtr now_function,
   }
   const_cast<std::unique_ptr<UdpSocket>&>(socket_) = std::move(result.value());
   OSP_CHECK(socket_);
+  // Only fixed-port sockets (e.g., a receiver bound to its well-known port)
+  // allow address reuse, to keep their existing binding behavior. Sockets bound
+  // to an ephemeral port must not: otherwise, the OS may hand out a port that
+  // is already held by another reusable socket (e.g., a concurrent Environment
+  // for another receiver), and then deliver that port's unicast traffic (such
+  // as RTCP) to only one of them.
+  socket_->SetReuseAddress(local_endpoint.port != 0);
   socket_->Bind();
 }
 

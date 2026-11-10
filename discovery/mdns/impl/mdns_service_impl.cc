@@ -88,10 +88,14 @@ MdnsServiceImpl::MdnsServiceImpl(TaskRunner& task_runner,
     // above objects have all been created, it they should be able to safely do
     // so. NOTE: Although only one of these sockets is used for sending, both
     // will be used for reading on the mDNS v4 and v6 addresses and ports.
+    // Address reuse is required because mDNS mandates port 5353, which may also
+    // be bound by other mDNS implementations provided by the system.
     if (socket_v4_) {
+      socket_v4_->SetReuseAddress(true);
       socket_v4_->Bind();
     }
     if (socket_v6_) {
+      socket_v6_->SetReuseAddress(true);
       socket_v6_->Bind();
     }
   };
