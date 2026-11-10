@@ -11,6 +11,7 @@ used to run tasks on the client's
 
 * The [trace logging](trace_logging.md) framework is thread-safe.
 * The TaskRunner itself is thread-safe.
+* [Runtime options](runtime_options.md) can be read and set on any thread.
 * The [POSIX platform implementation](https://chromium.googlesource.com/openscreen/+/refs/heads/main/platform/impl/)
   starts a network thread, and handles interactions between that thread and the
   TaskRunner internally.

@@ -30,6 +30,12 @@ platform features.
 - test/ - contains API implementations used for testing purposes, like the
   FakeClock or FakeTaskRunner.
 
+## Runtime options
+
+`api/runtime_options.h` lets embedders change library behavior at runtime,
+without a rebuild. The library provides the defaults, so embedders that are
+happy with them do nothing. See [Runtime options](../docs/runtime_options.md).
+
 *** aside
 Note: people familiar with the old layout may notice that all files from the
 `posix/`, `linux/`, and `mac/` directories have been moved under `impl/` with
