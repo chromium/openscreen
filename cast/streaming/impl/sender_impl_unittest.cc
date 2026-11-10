@@ -715,9 +715,35 @@ TEST_F(SenderTest, RespondsToNetworkLatencyChanges) {
             sender()->GetMaxInFlightMediaDuration());
 }
 
-// Tests that the in-flight media duration is capped at a third of the playout
-// delay under high latency, so the Sender backs off rather than over-buffering
-// and reserves the majority of the playout window for the Receiver.
+// Tests that a round-trip time above the floor still gets a window of twice the
+// round-trip time, as long as that fits under the cap. Each frame waits about
+// one round trip for its ACK, so a smaller window would drop frames on a
+// lossless link.
+TEST_F(SenderTest, TracksRoundTripTimeAboveFloorOnHighLatencyLinks) {
+  // Enqueue a frame so the Sender begins emitting periodic RTCP reports.
+  {
+    EncodedFrameWithBuffer frame;
+    PopulateFrameWithDefaults(FrameId::first(), FakeClock::now(), 0,
+                              1 /* byte */, &frame);
+    ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
+  }
+
+  // A 100 ms round-trip time. Twice that (200 ms) is above a third of the
+  // playout delay (133 ms) but below two thirds (267 ms).
+  constexpr milliseconds kOutboundDelay(50);
+  constexpr milliseconds kInboundDelay(50);
+  SimulateNetworkRoundTrip(kOutboundDelay, kInboundDelay);
+
+  ASSERT_GT(2 * sender()->GetCurrentRoundTripTime(),
+            Clock::to_duration(kTargetPlayoutDelay) / 3);
+  EXPECT_EQ(2 * sender()->GetCurrentRoundTripTime(),
+            sender()->GetMaxInFlightMediaDuration());
+}
+
+// Tests that the in-flight media duration is capped at two thirds of the
+// playout delay under high latency, so the Sender drops frames rather than
+// over-buffering, and the oldest frame in flight still has time to be
+// retransmitted and played out.
 TEST_F(SenderTest, CapsInFlightMediaDurationUnderHighLatency) {
   // Enqueue a frame so the Sender begins emitting periodic RTCP reports.
   {
@@ -727,22 +753,22 @@ TEST_F(SenderTest, CapsInFlightMediaDurationUnderHighLatency) {
     ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
   }
 
-  // A large round-trip time, so that twice the RTT exceeds a third of the
+  // A large round-trip time, so that twice the RTT exceeds two thirds of the
   // playout delay and the upper bound takes effect.
-  constexpr milliseconds kOutboundDelay(50);
-  constexpr milliseconds kInboundDelay(50);
+  constexpr milliseconds kOutboundDelay(75);
+  constexpr milliseconds kInboundDelay(75);
   SimulateNetworkRoundTrip(kOutboundDelay, kInboundDelay);
 
-  const Clock::duration cap = Clock::to_duration(kTargetPlayoutDelay) / 3;
+  const Clock::duration cap = Clock::to_duration(kTargetPlayoutDelay) * 2 / 3;
   ASSERT_GT(2 * sender()->GetCurrentRoundTripTime(), cap);
   EXPECT_EQ(cap, sender()->GetMaxInFlightMediaDuration());
 }
 
-// Tests that when a third of the playout delay falls below the in-flight floor,
-// the floor wins and the std::clamp() bounds remain well-ordered (no
+// Tests that when two thirds of the playout delay falls below the in-flight
+// floor, the floor wins and the std::clamp() bounds remain well-ordered (no
 // precondition violation).
 TEST_F(SenderTest, EnforcesMinimumInFlightForSmallPlayoutDelays) {
-  // A third of this playout delay (30ms) is below the ~81.7ms floor, so the
+  // Two thirds of this playout delay (60ms) is below the ~81.7ms floor, so the
   // floor wins and the std::clamp() bounds remain well-ordered.
   EXPECT_EQ(kMinSenderInFlight, MaxInFlightForPlayoutDelay(milliseconds(90)));
 }

@@ -126,19 +126,22 @@ Clock::duration SenderImpl::GetMaxInFlightMediaDuration() const {
   //
   // TODO(crbug.com/572902679): The window leaves out send time. At the default
   // 24 Mbps burst rate, a large key frame can take several frame intervals to
-  // send. Chrome also counts frames in the encoder against this window. With a
-  // playout delay under about 245 ms (Chrome uses 100 to 200 ms), the cap is
-  // below the floor, so the floor is the whole window.
+  // send. Chrome also counts frames in the encoder against this window.
   //
-  // The window is capped at a third of the playout delay. This keeps most of
-  // the playout budget for the Receiver to absorb retransmits, and makes the
-  // Sender drop frames early under congestion instead of buffering. See
-  // crbug.com/498035450.
+  // The window is capped at two thirds of the playout delay. The oldest frame
+  // in flight then still has a third of the playout delay to be retransmitted
+  // and played out, and the Sender drops frames instead of buffering once the
+  // round-trip time grows past that. A tighter cap (a third of the playout
+  // delay, see crbug.com/498035450) was below the floor for every playout delay
+  // under about 245 ms, so the window was fixed at the floor. Any link with a
+  // round-trip time above about 80 ms then dropped about every other frame
+  // even with no packet loss, because each frame waits about one round trip
+  // for its ACK.
   //
   // Note: the upper bound is held at or above `kMinSenderInFlight` so the
   // std::clamp() bounds remain well-ordered even for very small playout delays.
   const Clock::duration max_in_flight = std::max(
-      kMinSenderInFlight, Clock::to_duration(target_playout_delay_) / 3);
+      kMinSenderInFlight, Clock::to_duration(target_playout_delay_) * 2 / 3);
   return std::clamp(round_trip_time_ * 2, kMinSenderInFlight, max_in_flight);
 }
 
