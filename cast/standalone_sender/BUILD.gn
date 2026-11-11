@@ -134,12 +134,30 @@ if (!build_with_chromium) {
     public_configs = [ ":standalone_external_libs" ]
   }
 
+  openscreen_source_set("test_helpers") {
+    testonly = true
+    public = [
+      "testing/packet_drop_environment.h",
+      "testing/video_packet_dropper.h",
+    ]
+    sources = [
+      "testing/packet_drop_environment.cc",
+      "testing/video_packet_dropper.cc",
+    ]
+    public_deps = [
+      "../../platform",
+      "../streaming:common",
+    ]
+    deps = [ "../../util" ]
+  }
+
   openscreen_source_set("unittests") {
     testonly = true
     visibility += [ "../..:openscreen_unittests_all" ]
-    sources = []
+    sources = [ "testing/video_packet_dropper_unittest.cc" ]
     deps = [
       ":cast_sender_core",
+      ":test_helpers",
       "../../platform",
       "../../platform:test",
       "../../third_party/googletest:gtest",

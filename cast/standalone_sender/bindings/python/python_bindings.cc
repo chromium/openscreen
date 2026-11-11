@@ -5,6 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -12,12 +13,14 @@
 
 #include "cast/standalone_sender/bindings/python/cast_runtime.h"
 #include "cast/standalone_sender/bindings/python/sender_bridge.h"
+#include "cast/standalone_sender/testing/video_packet_dropper.h"
 #include "platform/api/time.h"
 
 namespace py = pybind11;
 
 using openscreen::cast::CastRuntime;
 using openscreen::cast::CastSenderBridge;
+using openscreen::cast::PacketDropConfig;
 
 PYBIND11_MODULE(cast_sender, m) {
   m.doc() = "Python bindings for Open Screen Standalone Cast Sender.";
@@ -32,7 +35,50 @@ PYBIND11_MODULE(cast_sender, m) {
              weak_instance = instance;
              return instance;
            }),
-           "Initialize the OpenScreen environment event loop.");
+           "Initialize the Open Screen environment event loop.");
+
+  py::class_<PacketDropConfig>(
+      m, "PacketDropConfig",
+      "Configuration for bursty Wi-Fi video RTP packet drop simulation.")
+      .def(py::init([](int64_t start_delay_ms, int64_t total_duration_ms,
+                       double drop_ratio, int64_t burst_duration_ms,
+                       uint32_t seed) {
+             return PacketDropConfig{
+                 .start_delay = std::chrono::milliseconds(start_delay_ms),
+                 .total_duration = std::chrono::milliseconds(total_duration_ms),
+                 .drop_ratio = drop_ratio,
+                 .burst_duration = std::chrono::milliseconds(burst_duration_ms),
+                 .seed = seed,
+             };
+           }),
+           py::arg("start_delay_ms"), py::arg("total_duration_ms"),
+           py::arg("drop_ratio") = PacketDropConfig::kDefaultDropRatio,
+           py::arg("burst_duration_ms") =
+               PacketDropConfig::kDefaultBurstDuration.count(),
+           py::arg("seed") = PacketDropConfig::kDefaultSeed,
+           "Initialize bursty video packet drop parameters.")
+      .def_property_readonly(
+          "start_delay_ms",
+          [](const PacketDropConfig& self) { return self.start_delay.count(); },
+          "Delay in milliseconds after the first video packet before packet "
+          "drops begin.")
+      .def_property_readonly(
+          "total_duration_ms",
+          [](const PacketDropConfig& self) {
+            return self.total_duration.count();
+          },
+          "Total duration in milliseconds of the active packet drop window.")
+      .def_readonly("drop_ratio", &PacketDropConfig::drop_ratio,
+                    "Target fraction of active window spent in outage bursts "
+                    "in (0.0, 1.0].")
+      .def_property_readonly(
+          "burst_duration_ms",
+          [](const PacketDropConfig& self) {
+            return self.burst_duration.count();
+          },
+          "Duration in milliseconds of each video RTP outage burst.")
+      .def_readonly("seed", &PacketDropConfig::seed,
+                    "Deterministic PRNG seed for outage burst intervals.");
 
   py::class_<CastSenderBridge::StreamConfig> stream_config(
       m, "StreamConfig", "Configuration options for streaming.");
@@ -57,6 +103,9 @@ PYBIND11_MODULE(cast_sender, m) {
       "should_include_audio",
       &CastSenderBridge::StreamConfig::should_include_audio,
       "Whether to include audio.");
+  stream_config.def_readwrite(
+      "packet_drop_config", &CastSenderBridge::StreamConfig::packet_drop_config,
+      "Optional PacketDropConfig for bursty video packet drop simulation.");
 
   py::class_<CastSenderBridge>(m, "CastSender")
       .def(py::init([](CastRuntime& env, std::string_view ip_address, int port,

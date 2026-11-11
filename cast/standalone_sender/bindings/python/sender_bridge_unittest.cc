@@ -4,6 +4,9 @@
 
 #include "cast/standalone_sender/bindings/python/sender_bridge.h"
 
+#include <chrono>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -91,6 +94,42 @@ TEST_F(SenderBridgeTest, GetStreamingStartTimeReturnsNulloptBeforeNegotiation) {
   ASSERT_TRUE(bridge.StreamVideo(config, /*is_debug=*/false));
   EXPECT_FALSE(bridge.GetStreamingStartTime().has_value());
   bridge.Teardown();
+}
+
+TEST_F(SenderBridgeTest, StreamVideoValidatesPacketDropSettings) {
+  const auto make_drop_config = [](int64_t delay_ms, int64_t total_ms,
+                                   double drop_ratio, int64_t burst_ms) {
+    return PacketDropConfig{
+        .start_delay = std::chrono::milliseconds(delay_ms),
+        .total_duration = std::chrono::milliseconds(total_ms),
+        .drop_ratio = drop_ratio,
+        .burst_duration = std::chrono::milliseconds(burst_ms),
+    };
+  };
+
+  for (const auto& invalid : {
+           make_drop_config(-1, 60000, 0.2, 250),
+           make_drop_config(30000, 0, 0.2, 250),
+           make_drop_config(30000, -1, 0.2, 250),
+           make_drop_config(30000, 60000, 0.0, 250),
+           make_drop_config(30000, 60000, -0.1, 250),
+           make_drop_config(30000, 60000, 1.01, 250),
+           make_drop_config(30000, 60000,
+                            std::numeric_limits<double>::quiet_NaN(), 250),
+           make_drop_config(30000, 60000, 0.2, 0),
+           make_drop_config(30000, 60000, 0.2, -1),
+       }) {
+    EXPECT_FALSE(invalid.IsValid());
+  }
+  EXPECT_TRUE(make_drop_config(0, 1, 0.2, 250).IsValid());
+  EXPECT_TRUE(make_drop_config(30000, 60000, 1.0, 1).IsValid());
+
+  CastSenderBridge::StreamConfig config{
+      .file_path = "test.mp4",
+      .codec_name = "vp8",
+      .packet_drop_config = make_drop_config(30000, 0, 0.2, 250),
+  };
+  EXPECT_FALSE(bridge_.StreamVideo(config, /*is_debug=*/false));
 }
 
 }  // namespace openscreen::cast

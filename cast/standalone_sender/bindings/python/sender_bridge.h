@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 
+#include "cast/standalone_sender/testing/video_packet_dropper.h"
 #include "platform/api/time.h"
 #include "platform/base/ip_address.h"
 #include "util/raw_ptr.h"
@@ -49,6 +50,7 @@ class CastSenderBridge {
   // `max_bitrate`: Peak aggregate bitrate (audio + video) across RTP streams.
   // `should_include_audio`: If false, negotiates a video-only mirroring
   // session.
+  // `packet_drop_config`: Optional bursty video RTP packet drop settings.
   struct StreamConfig {
     std::string file_path;
     std::string remote_transport_id;
@@ -56,6 +58,7 @@ class CastSenderBridge {
     std::string codec_name = "vp8";
     int max_bitrate = 5242880;
     bool should_include_audio = true;
+    std::optional<PacketDropConfig> packet_drop_config;
   };
 
   // Initiates Cast session connection, OFFER/ANSWER media negotiation, and RTP
@@ -80,6 +83,10 @@ class CastSenderBridge {
 
  private:
   enum class State { kInitializing, kStreaming, kTearingDown };
+
+  void OnAgentShutdown();
+  void ResetAgentOnTaskRunner();
+
   State state_ OSP_GUARDED_BY(mutex_) = State::kInitializing;
   IPAddress ip_address_;
   int port_;

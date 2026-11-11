@@ -33,9 +33,11 @@ using DeviceMediaPolicy = SenderSocketFactory::DeviceMediaPolicy;
 LoopingFileCastAgent::LoopingFileCastAgent(
     TaskRunner& task_runner,
     std::unique_ptr<TrustStore> cast_trust_store,
-    ShutdownCallback shutdown_callback)
+    ShutdownCallback shutdown_callback,
+    EnvironmentFactory environment_factory)
     : task_runner_(task_runner),
       shutdown_callback_(std::move(shutdown_callback)),
+      environment_factory_(std::move(environment_factory)),
       connection_handler_(router_, *this),
       socket_factory_(*this,
                       task_runner_,
@@ -320,8 +322,13 @@ void LoopingFileCastAgent::CreateAndStartSession() {
   TRACE_DEFAULT_SCOPED(TraceCategory::kStandaloneSender);
 
   OSP_CHECK(remote_connection_.has_value());
+  // Use the custom environment factory when set, or create a default one.
   environment_ =
-      std::make_unique<Environment>(&Clock::now, task_runner_, IPEndpoint{});
+      environment_factory_
+          ? environment_factory_(&Clock::now, task_runner_, IPEndpoint{})
+          : std::make_unique<Environment>(&Clock::now, task_runner_,
+                                          IPEndpoint{});
+  OSP_CHECK(environment_);
 
   SenderSession::Configuration config{
       connection_settings_->receiver_endpoint.address,

@@ -87,12 +87,19 @@ class LoopingFileCastAgent final
       public RemotingSender::Client {
  public:
   using ShutdownCallback = std::function<void()>;
+  using EnvironmentFactory =
+      std::function<std::unique_ptr<Environment>(ClockNowFunctionPtr,
+                                                 TaskRunner&,
+                                                 const IPEndpoint&)>;
 
   // `shutdown_callback` is invoked after normal shutdown, whether initiated
-  // sender- or receiver-side; or, for any fatal error.
+  // sender- or receiver-side; or, for any fatal error. `environment_factory`
+  // may be provided to inject a custom `Environment` (e.g. packet-loss
+  // simulation in tests); when empty, a default `Environment` is constructed.
   LoopingFileCastAgent(TaskRunner& task_runner,
                        std::unique_ptr<TrustStore> cast_trust_store,
-                       ShutdownCallback shutdown_callback);
+                       ShutdownCallback shutdown_callback,
+                       EnvironmentFactory environment_factory = {});
   ~LoopingFileCastAgent();
 
   // Connect to a Cast Receiver, and start the workflow to establish a
@@ -191,6 +198,7 @@ class LoopingFileCastAgent final
   // Member variables set as part of construction.
   TaskRunner& task_runner_;
   ShutdownCallback shutdown_callback_;
+  EnvironmentFactory environment_factory_;
   VirtualConnectionRouter router_;
   ConnectionNamespaceHandler connection_handler_;
   SenderSocketFactory socket_factory_;

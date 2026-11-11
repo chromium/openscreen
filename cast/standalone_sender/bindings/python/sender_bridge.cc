@@ -12,7 +12,9 @@
 #include <utility>
 
 #include "cast/common/public/trust_store.h"
+#include "cast/standalone_sender/connection_settings.h"
 #include "cast/standalone_sender/looping_file_cast_agent.h"
+#include "cast/standalone_sender/testing/packet_drop_environment.h"
 #include "cast/streaming/message_fields.h"
 #include "platform/api/task_runner.h"
 #include "platform/api/time.h"
@@ -56,6 +58,19 @@ bool CastSenderBridge::StreamVideo(const StreamConfig& config, bool is_debug) {
   const auto parsed_codec = StringToVideoCodec(config.codec_name);
   if (parsed_codec.is_error()) {
     OSP_LOG_ERROR << "Unsupported video codec requested: " << config.codec_name;
+    std::lock_guard<std::mutex> lock(mutex_);
+    state_ = State::kInitializing;
+    return false;
+  }
+
+  if (config.packet_drop_config.has_value() &&
+      !config.packet_drop_config->IsValid()) {
+    const auto& drop = *config.packet_drop_config;
+    OSP_LOG_ERROR << "Invalid packet drop settings: start_delay_ms="
+                  << drop.start_delay.count()
+                  << ", total_duration_ms=" << drop.total_duration.count()
+                  << ", drop_ratio=" << drop.drop_ratio
+                  << ", burst_duration_ms=" << drop.burst_duration.count();
     std::lock_guard<std::mutex> lock(mutex_);
     state_ = State::kInitializing;
     return false;
@@ -119,6 +134,17 @@ bool CastSenderBridge::StreamVideo(const StreamConfig& config, bool is_debug) {
       .preconfigured_session_info = preconfigured_session_info,
   };
 
+  LoopingFileCastAgent::EnvironmentFactory env_factory;
+  if (config.packet_drop_config.has_value()) {
+    const PacketDropConfig drop_config = *config.packet_drop_config;
+    env_factory = [drop_config](ClockNowFunctionPtr now_function,
+                                TaskRunner& task_runner,
+                                const IPEndpoint& local_endpoint) {
+      return std::make_unique<PacketDropEnvironment>(
+          now_function, task_runner, local_endpoint, drop_config);
+    };
+  }
+
   std::unique_ptr<TrustStore> cast_trust_store;
   if (!cert_path_.empty()) {
     cast_trust_store = TrustStore::CreateInstanceFromPemFile(cert_path_);
@@ -133,22 +159,17 @@ bool CastSenderBridge::StreamVideo(const StreamConfig& config, bool is_debug) {
       state_ = State::kInitializing;
       return false;
     }
-    task_runner_->PostTask(
-        [this, settings, store = std::move(cast_trust_store)]() mutable {
-          std::lock_guard<std::mutex> lock(mutex_);
-          if (state_ != State::kStreaming) {
-            return;
-          }
-          cast_agent_ = std::make_unique<LoopingFileCastAgent>(
-              *task_runner_, std::move(store), [this] {
-                task_runner_->PostTask([this] {
-                  std::lock_guard<std::mutex> lock(mutex_);
-                  cast_agent_.reset();
-                  state_ = State::kInitializing;
-                });
-              });
-          cast_agent_->Connect(settings);
-        });
+    task_runner_->PostTask([this, settings, store = std::move(cast_trust_store),
+                            env_factory = std::move(env_factory)]() mutable {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (state_ != State::kStreaming) {
+        return;
+      }
+      cast_agent_ = std::make_unique<LoopingFileCastAgent>(
+          *task_runner_, std::move(store), [this] { OnAgentShutdown(); },
+          std::move(env_factory));
+      cast_agent_->Connect(settings);
+    });
   }
 
   return true;
@@ -200,16 +221,24 @@ void CastSenderBridge::Teardown() {
 
   task_runner_->PostTask(
       [this, promise = std::move(destroy_promise)]() mutable {
-        {
-          std::lock_guard<std::mutex> lock(mutex_);
-          cast_agent_.reset();
-          state_ = State::kInitializing;
-        }
+        ResetAgentOnTaskRunner();
         task_runner_->PostTask(
             [promise = std::move(promise)]() mutable { promise.set_value(); });
       });
 
   destroy_future.wait();
+}
+
+void CastSenderBridge::OnAgentShutdown() {
+  // Defer reset to the next task runner turn so the agent does not delete
+  // itself on the active call stack or relock the mutex during teardown.
+  task_runner_->PostTask([this] { ResetAgentOnTaskRunner(); });
+}
+
+void CastSenderBridge::ResetAgentOnTaskRunner() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  cast_agent_.reset();
+  state_ = State::kInitializing;
 }
 
 }  // namespace openscreen::cast
