@@ -5,29 +5,22 @@
 #ifndef DISCOVERY_DNSSD_IMPL_SERVICE_DISPATCHER_H_
 #define DISCOVERY_DNSSD_IMPL_SERVICE_DISPATCHER_H_
 
-#include <memory>
 #include <string>
-#include <vector>
 
-#include "discovery/dnssd/impl/querier_impl.h"
-#include "discovery/dnssd/impl/service_instance.h"
+#include "discovery/common/config.h"
+#include "discovery/common/reporting_client.h"
+#include "discovery/dnssd/public/dns_sd_instance.h"
+#include "discovery/dnssd/public/dns_sd_publisher.h"
 #include "discovery/dnssd/public/dns_sd_querier.h"
 #include "discovery/dnssd/public/dns_sd_service.h"
-#include "util/raw_ptr.h"
+#include "platform/api/task_runner.h"
 #include "util/raw_ref.h"
 
-namespace openscreen {
+namespace openscreen::discovery {
 
-class TaskRunner;
-
-namespace discovery {
-
-struct Config;
-class ReportingClient;
-
-class ServiceDispatcher final : public DnsSdPublisher,
-                                public DnsSdQuerier,
-                                public DnsSdService {
+class ServiceDispatcher final : public DnsSdService,
+                                public DnsSdPublisher,
+                                public DnsSdQuerier {
  public:
   ServiceDispatcher(TaskRunner& task_runner,
                     ReportingClient& reporting_client,
@@ -39,27 +32,22 @@ class ServiceDispatcher final : public DnsSdPublisher,
   DnsSdPublisher* GetPublisher() override { return publisher_; }
 
  private:
+  // DnsSdPublisher overrides.
+  Error Register(const DnsSdInstance& instance,
+                 DnsSdPublisher::Client* client) override;
+  Error UpdateRegistration(const DnsSdInstance& instance) override;
+  ErrorOr<int> DeregisterAll(const std::string& service) override;
+
   // DnsSdQuerier overrides.
   void StartQuery(const std::string& service, Callback* cb) override;
   void StopQuery(const std::string& service, Callback* cb) override;
   void ReinitializeQueries(const std::string& service) override;
 
-  // DnsSdPublisher overrides.
-  Error Register(const DnsSdInstance& instance, Client* client) override;
-  Error UpdateRegistration(const DnsSdInstance& instance) override;
-  ErrorOr<int> DeregisterAll(const std::string& service) override;
-
-  std::vector<std::unique_ptr<ServiceInstance>> service_instances_;
-
   const raw_ref<TaskRunner> task_runner_;
-
-  // Pointers either to this instance or to nullptr depending whether the below
-  // types are supported.
-  const raw_ptr<DnsSdPublisher> publisher_;
-  const raw_ptr<DnsSdQuerier> querier_;
+  DnsSdPublisher* const publisher_;
+  DnsSdQuerier* const querier_;
 };
 
-}  // namespace discovery
-}  // namespace openscreen
+}  // namespace openscreen::discovery
 
 #endif  // DISCOVERY_DNSSD_IMPL_SERVICE_DISPATCHER_H_
