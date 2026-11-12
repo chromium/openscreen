@@ -6,6 +6,15 @@
 Open Screen's LUCI configuration for post-submit and pre-submit builders.
 """
 
+load("@chromium-luci//bootstrap.star", "register_recipe_bootstrappability")
+load("@chromium-luci//builder_config.star", "builder_config")
+load("@chromium-luci//builders.star", "os")
+load("@chromium-luci//chromium_luci.star", "chromium_luci")
+load("@chromium-luci//ci.star", "ci")
+load("@chromium-luci//recipe_experiments.star", "register_recipe_experiments")
+load("@chromium-luci//targets.star", "targets")
+load("@chromium-luci//try.star", "try_")
+
 REPO_URL = "https://chromium.googlesource.com/openscreen"
 CHROMIUM_REPO_URL = "https://chromium.googlesource.com/chromium/src"
 MAC_VERSION = "Mac-15"
@@ -18,8 +27,25 @@ SISO_PROPERTY = "$build/siso"
 # Use LUCI Scheduler BBv2 names and add Scheduler realms configs.
 lucicfg.enable_experiment("crbug.com/1182002")
 
+lucicfg.config(
+    config_dir = "generated",
+    tracked_files = [
+        "builders/*/*/*",
+        "builders/*/*/*/*",
+        "luci/commit-queue.cfg",
+        "luci/cr-buildbucket.cfg",
+        "luci/luci-logdog.cfg",
+        "luci/luci-milo.cfg",
+        "luci/luci-scheduler.cfg",
+        "luci/project.cfg",
+        "luci/realms.cfg",
+    ],
+    fail_on_warnings = True,
+)
+
 luci.project(
     name = "openscreen",
+    config_dir = "luci",
     milo = "luci-milo.appspot.com",
     buildbucket = "cr-buildbucket.appspot.com",
     logdog = "luci-logdog.appspot.com",
@@ -56,6 +82,38 @@ luci.project(
         ),
     ],
 )
+
+chromium_luci.configure_project(
+    name = "openscreen",
+    config_dir = "generated",
+    is_main = True,
+    platforms = {},
+    relative_path = "third_party/openscreen/src",
+)
+
+chromium_luci.configure_per_builder_outputs(
+    root_dir = "builders",
+)
+
+chromium_luci.configure_builder_health_indicators(
+    unhealthy_period_days = 7,
+    pending_time_p50_min = 20,
+)
+
+chromium_luci.configure_ci(
+    test_results_bq_dataset_name = "chromium",
+)
+
+chromium_luci.configure_try(
+    test_results_bq_dataset_name = "chromium",
+)
+
+chromium_luci.configure_recipe_experiments(
+    # Standalone Open Screen builders still call luci.builder() directly.
+    require_builder_wrappers = False,
+)
+
+exec("@chromium-targets//declarations.star")
 
 luci.milo(
     logo = (
@@ -516,21 +574,146 @@ try_and_ci_builders(
     "x86-64",
     get_properties("x64", build_targets = ["gn_all"]),
 )
-try_and_ci_builders(
-    "chromium_linux_x64",
-    LINUX_VERSION,
-    "x86-64",
-    get_properties("x64", chromium = True),
+luci.recipe(
+    name = "recipe:chromium",
+    recipe = "chromium",
+    cipd_package = TOOLS_BUILD_RECIPE_BUNDLE,
+    cipd_version = "refs/heads/main",
+    use_bbagent = True,
 )
-try_and_ci_builders(
-    "chromium_mac_arm64",
-    MAC_VERSION,
-    "arm64",
-    get_properties("arm64", chromium = True),
+register_recipe_bootstrappability("recipe:chromium", False)
+register_recipe_experiments("recipe:chromium", {})
+
+def chromium_try_and_ci_builders(
+        name,
+        description_html,
+        os_dim,
+        cpu_dim,
+        target_platform,
+        caches = [],
+        experiment_percentage = None,
+        targets_config = None):
+    """Defines a Chromium-recipe CI and Try builder pair with Starlark targets."""
+    common_kwargs = dict(
+        name = name,
+        description_html = description_html,
+        contact_team_email = "openscreen-eng@google.com",
+        executable = "recipe:chromium",
+        bootstrap = False,
+        builderless = None,
+        auto_builder_dimension = False,
+        ssd = None,
+        os = os_dim,
+        cpu = cpu_dim,
+        caches = caches,
+        siso_configs = ["builder"],
+        siso_enable_cloud_monitoring = True,
+        siso_enable_cloud_trace = True,
+        siso_profile_mode = "cloud",
+        siso_remote_jobs = None,
+        targets_settings = targets.settings(
+            use_swarming = False,
+        ),
+    )
+
+    ci.builder(
+        bucket = "ci",
+        pool = "luci.flex.ci",
+        builder_group = "client.openscreen.chromium",
+        service_account = "openscreen-ci-builder@chops-service-accounts.iam.gserviceaccount.com",
+        shadow_service_account = "openscreen-try-builder@chops-service-accounts.iam.gserviceaccount.com",
+        siso_project = _siso.project.DEFAULT_TRUSTED,
+        shadow_siso_project = _siso.project.DEFAULT_UNTRUSTED,
+        triggered_by = ["chromium-trigger"],
+        builder_spec = builder_config.builder_spec(
+            gclient_config = builder_config.gclient_config(
+                config = "chromium",
+                apply_configs = ["openscreen_tot"],
+            ),
+            chromium_config = builder_config.chromium_config(
+                config = "chromium",
+                apply_configs = ["mb"],
+                build_config = builder_config.build_config.DEBUG,
+                target_bits = 64,
+                target_platform = target_platform,
+            ),
+        ),
+        targets = targets_config,
+        console_view_entry = None,
+        **common_kwargs
+    )
+
+    try_.builder(
+        bucket = "try",
+        pool = "luci.flex.try",
+        builder_group = "tryserver.openscreen.chromium",
+        service_account = "openscreen-try-builder@chops-service-accounts.iam.gserviceaccount.com",
+        siso_project = _siso.project.DEFAULT_UNTRUSTED,
+        mirrors = ["ci/" + name],
+        cq_group = "openscreen-build-config",
+        check_for_flakiness = False,
+        cq_settings = try_.cq_settings(
+            on_default_cq = True,
+            add_default_filters = False,
+            add_default_disable_reuse_footers = False,
+            experiment_percentage = experiment_percentage,
+        ),
+        list_view = None,
+        console_view_entry = None,
+        **common_kwargs
+    )
+
+    for builder_type in ("ci", "try"):
+        luci.console_view_entry(
+            builder = "{}/{}".format(builder_type, name),
+            console_view = builder_type,
+            category = "{}|{}".format(os_dim.get_dimension(None, None), cpu_dim),
+            short_name = name,
+        )
+
+_CHROMIUM_BASE_TARGETS = targets.bundle(
+    targets = [
+        "openscreen_chromium_gtests",
+    ],
+    additional_compile_targets = [
+        "chrome/browser/media/router",
+        "chrome/browser/media/router:unittests",
+    ],
 )
-try_and_ci_builders(
-    "chromium_win_x64",
-    WINDOWS_VERSION,
-    "x86-64",
-    get_properties("x64", chromium = True),
+
+chromium_try_and_ci_builders(
+    name = "chromium_linux_x64",
+    description_html = "Builds and tests Chromium ToT with Open Screen ToT on Linux x64.",
+    os_dim = os.LINUX_NOBLE,
+    cpu_dim = "x86-64",
+    target_platform = builder_config.target_platform.LINUX,
+    targets_config = _CHROMIUM_BASE_TARGETS,
+)
+
+chromium_try_and_ci_builders(
+    name = "chromium_mac_arm64",
+    description_html = "Builds and tests Chromium ToT with Open Screen ToT on Mac arm64.",
+    os_dim = os.MAC_15,
+    cpu_dim = "arm64",
+    target_platform = builder_config.target_platform.MAC,
+    caches = [swarming.cache("osx_sdk")],
+    experiment_percentage = 100,
+    targets_config = _CHROMIUM_BASE_TARGETS,
+)
+
+chromium_try_and_ci_builders(
+    name = "chromium_win_x64",
+    description_html = "Builds and tests Chromium ToT with Open Screen ToT on Windows x64.",
+    os_dim = os.WINDOWS_10,
+    cpu_dim = "x86-64",
+    target_platform = builder_config.target_platform.WIN,
+    experiment_percentage = 100,
+    targets_config = targets.bundle(
+        targets = _CHROMIUM_BASE_TARGETS,
+        per_test_modifications = {
+            "openscreen_unittests": targets.remove(
+                reason = "openscreen_unittests is not supported on Windows",
+            ),
+        },
+    ),
 )

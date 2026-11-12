@@ -1,0 +1,31 @@
+{
+  "chromium_win_x64": {
+    "additional_compile_targets": [
+      "chrome/browser/media/router",
+      "chrome/browser/media/router:unittests"
+    ],
+    "gtest_tests": [
+      {
+        "module_name": "//media/cast:cast_unittests/",
+        "module_scheme": "gtest",
+        "name": "cast_unittests",
+        "test": "cast_unittests",
+        "test_id_prefix": "ninja://media/cast:cast_unittests/"
+      },
+      {
+        "module_name": "//components:components_unittests/",
+        "module_scheme": "gtest",
+        "name": "components_unittests",
+        "test": "components_unittests",
+        "test_id_prefix": "ninja://components:components_unittests/"
+      },
+      {
+        "module_name": "//media:media_unittests/",
+        "module_scheme": "gtest",
+        "name": "media_unittests",
+        "test": "media_unittests",
+        "test_id_prefix": "ninja://media:media_unittests/"
+      }
+    ]
+  }
+}
