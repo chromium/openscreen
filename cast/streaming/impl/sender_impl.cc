@@ -54,6 +54,23 @@ constexpr Clock::duration kMinSenderInFlight =
     kInFlightJitterAllowance;
 static_assert(kMinSenderInFlight == microseconds(81667));
 
+// Maximum media duration attributed to a single inter-frame step when
+// computing in-flight media duration. Because EncodedFrame does not carry an
+// explicit frame duration, GetInFlightMediaDuration() infers each frame's
+// duration from the RTP timestamp delta to the next frame. During static-screen
+// capture pauses, low-frame-rate capture (e.g. 10 FPS), or after upstream frame
+// drops, that RTP delta can exceed `kMinSenderInFlight` (81.67 ms) for a single
+// frame, causing EnqueueFrame() to reject the next frame even when only one
+// frame is in flight.
+//
+// Capping each step at 50 ms (20 FPS, matching Chrome's `kFrameRefreshInterval`
+// and just above a 30 FPS interval plus `kInFlightJitterAllowance`) lets 1 to 2
+// frames stay in flight at <= 20 FPS (compared to 2 to 4 frames at 30 FPS) for
+// typical 100-200 ms playout delays while preventing idle capture gaps from
+// triggering false MAX_DURATION_IN_FLIGHT drops. See crbug.com/572902679.
+constexpr Clock::duration kMaxUnpausedFrameDuration =
+    Clock::to_duration(milliseconds(50));
+
 }  // namespace
 
 using clock_operators::operator<<;
@@ -112,8 +129,33 @@ Clock::duration SenderImpl::GetInFlightMediaDuration(
   // the checkpoint forward. See "CST2 feedback" discussion in rtp_defines.h.
   OSP_CHECK(oldest_slot.is_active_for_frame(checkpoint_frame_id_ + 1));
 
-  return (next_frame_rtp_timestamp - oldest_slot.frame.rtp_timestamp)
-      .ToDuration<Clock::duration>(rtp_timebase_);
+  // Sum the media duration of each active frame in flight by walking from the
+  // oldest unacknowledged frame (`checkpoint_frame_id_ + 1`) through
+  // `last_enqueued_frame_id_`, skipping any intermediate frames that were
+  // individually ACKed and canceled out of order, and finally adding the step
+  // from `last_enqueued_frame_id_` to `next_frame_rtp_timestamp`. Each frame's
+  // inferred duration (the RTP timestamp delta to the next active frame) is
+  // clamped to `kMaxUnpausedFrameDuration` so that a capture pause or dropped
+  // frame between two consecutive frames does not inflate the total in-flight
+  // media duration.
+  Clock::duration total_duration = Clock::duration::zero();
+  RtpTimeTicks prev_timestamp = oldest_slot.frame.rtp_timestamp;
+  for (FrameId id = checkpoint_frame_id_ + 2; id <= last_enqueued_frame_id_;
+       ++id) {
+    const PendingFrameSlot& slot = get_slot_for(id);
+    if (!slot.is_active_for_frame(id)) {
+      continue;
+    }
+    const auto step = (slot.frame.rtp_timestamp - prev_timestamp)
+                          .ToDuration<Clock::duration>(rtp_timebase_);
+    total_duration += std::min(step, kMaxUnpausedFrameDuration);
+    prev_timestamp = slot.frame.rtp_timestamp;
+  }
+
+  const auto next_step = (next_frame_rtp_timestamp - prev_timestamp)
+                             .ToDuration<Clock::duration>(rtp_timebase_);
+  total_duration += std::min(next_step, kMaxUnpausedFrameDuration);
+  return total_duration;
 }
 
 Clock::duration SenderImpl::GetMaxInFlightMediaDuration() const {

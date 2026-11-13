@@ -636,14 +636,41 @@ TEST_F(SenderTest, ComputesInFlightMediaDuration) {
   ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
 
   // Now, the in-flight media duration should depend on the RTP timestamp of the
-  // next frame.
+  // next frame, capped at the maximum unpaused single-frame duration (50 ms) so
+  // idle VFR capture gaps do not masquerade as network backlog.
   EXPECT_EQ(kFrameDuration, sender()->GetInFlightMediaDuration(
                                 frame.rtp_timestamp +
                                 RtpTimeDelta::FromTicks(kRtpTicksPerFrame)));
-  EXPECT_EQ(10 * kFrameDuration,
+  EXPECT_EQ(3 * kFrameDuration,
+            sender()->GetInFlightMediaDuration(
+                frame.rtp_timestamp +
+                RtpTimeDelta::FromTicks(3 * kRtpTicksPerFrame)));
+  EXPECT_EQ(Clock::to_duration(milliseconds(50)),
             sender()->GetInFlightMediaDuration(
                 frame.rtp_timestamp +
                 RtpTimeDelta::FromTicks(10 * kRtpTicksPerFrame)));
+}
+
+// Tests that a static-screen capture gap (e.g. 500 ms between two consecutive
+// frames) while the previous frame is still awaiting its ACK does not cause a
+// false MAX_DURATION_IN_FLIGHT rejection.
+TEST_F(SenderTest, DoesNotRejectFrameAfterStaticScreenCaptureGap) {
+  EncodedFrameWithBuffer frame0;
+  PopulateFrameWithDefaults(FrameId::first(), FakeClock::now(), 0,
+                            13 /* bytes */, &frame0);
+  ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame0));
+
+  // Next frame is captured 500 ms later (simulating a static screen interval),
+  // while frame0 is still in flight awaiting its ACK.
+  EncodedFrameWithBuffer frame1;
+  PopulateFrameWithDefaults(FrameId::first() + 1,
+                            FakeClock::now() + milliseconds(500), 0,
+                            13 /* bytes */, &frame1);
+  frame1.rtp_timestamp =
+      frame0.rtp_timestamp +
+      RtpTimeDelta::FromDuration(milliseconds(500), kRtpTimebase);
+  EXPECT_EQ(Sender::OK, sender()->EnqueueFrame(frame1));
+  EXPECT_EQ(2u, sender()->GetInFlightFrameCount());
 }
 
 // Tests that the Sender computes the maximum in-flight media duration based on
