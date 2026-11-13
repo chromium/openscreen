@@ -2,7 +2,7 @@ Name: googletest
 Short Name: googletest
 URL: https://github.com/google/googletest
 Version: N/A
-Revision: 2910168b8bc15b4497ef10f4ff5a1155973fc499
+Revision: 845e54d32d86ee1bb872ebb5b1c755e6e3a94c34
 Update Mechanism: Autoroll
 License: BSD-3-Clause
 License File: src/LICENSE
