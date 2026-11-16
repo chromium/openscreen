@@ -14,8 +14,8 @@
 
 #include "cast/streaming/public/frame_id.h"
 #include "cast/streaming/rtp_time.h"
-#include "json/value.h"
 #include "platform/api/time.h"
+#include "util/json/json_value.h"
 
 namespace openscreen::cast {
 
@@ -139,7 +139,7 @@ struct SimpleHistogram {
   void Add(int64_t sample);
   void Reset();
 
-  Json::Value ToJson() const;
+  json::Value ToJson() const;
   std::string ToString() const;
 
   int64_t min = 1;
@@ -177,7 +177,7 @@ struct SenderStats {
   // The current video histograms.
   HistogramsList video_histograms = {};
 
-  Json::Value ToJson() const;
+  json::Value ToJson() const;
   std::string ToString() const;
 };
 

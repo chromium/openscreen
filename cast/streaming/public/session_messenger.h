@@ -15,10 +15,10 @@
 #include "cast/streaming/public/offer_messages.h"
 #include "cast/streaming/public/receiver_message.h"
 #include "cast/streaming/sender_message.h"
-#include "json/value.h"
 #include "platform/api/task_runner.h"
 #include "platform/base/span.h"
 #include "util/flat_map.h"
+#include "util/json/json_value.h"
 #include "util/raw_ref.h"
 #include "util/weak_ptr.h"
 
@@ -41,7 +41,7 @@ class SessionMessenger : public MessagePort::Client {
   // Barebones message sending method shared by both children.
   [[nodiscard]] Error SendMessage(const std::string& destination_id,
                                   const std::string& namespace_,
-                                  const Json::Value& message_root);
+                                  const json::Value& message_root);
 
   // Used to report errors in subclasses.
   void ReportError(const Error& error);

@@ -160,7 +160,7 @@ void ExpectEqualsValidAnswerJson(const Answer& answer) {
 }
 
 void ExpectFailureOnParse(std::string_view raw_json) {
-  ErrorOr<Json::Value> root = json::Parse(raw_json);
+  ErrorOr<json::Value> root = json::Parse(raw_json);
   // Must be a valid JSON object, but not a valid answer.
   ASSERT_TRUE(root.is_value());
 
@@ -171,7 +171,7 @@ void ExpectFailureOnParse(std::string_view raw_json) {
 // Functions that use ASSERT_* must return void, so we use an out parameter
 // here instead of returning.
 void ExpectSuccessOnParse(std::string_view raw_json, Answer* out = nullptr) {
-  ErrorOr<Json::Value> root = json::Parse(raw_json);
+  ErrorOr<json::Value> root = json::Parse(raw_json);
   // Must be a valid JSON object, but not a valid answer.
   ASSERT_TRUE(root.is_value());
 
@@ -187,74 +187,74 @@ void ExpectSuccessOnParse(std::string_view raw_json, Answer* out = nullptr) {
 
 TEST(AnswerMessagesTest, ProperlyPopulatedAnswerSerializesProperly) {
   ASSERT_TRUE(GetValidAnswer().IsValid());
-  Json::Value root = GetValidAnswer().ToJson();
+  json::Value root = GetValidAnswer().ToJson();
   EXPECT_EQ(root["udpPort"], 1234);
 
-  Json::Value sendIndexes = std::move(root["sendIndexes"]);
-  EXPECT_EQ(sendIndexes.type(), Json::ValueType::arrayValue);
+  json::Value sendIndexes = std::move(root["sendIndexes"]);
+  EXPECT_EQ(sendIndexes.type(), json::ValueType::arrayValue);
   EXPECT_EQ(sendIndexes[0], 1);
   EXPECT_EQ(sendIndexes[1], 3);
 
-  Json::Value ssrcs = std::move(root["ssrcs"]);
-  EXPECT_EQ(ssrcs.type(), Json::ValueType::arrayValue);
+  json::Value ssrcs = std::move(root["ssrcs"]);
+  EXPECT_EQ(ssrcs.type(), json::ValueType::arrayValue);
   EXPECT_EQ(ssrcs[0], 123u);
   EXPECT_EQ(ssrcs[1], 456u);
 
-  Json::Value constraints = std::move(root["constraints"]);
-  Json::Value audio = std::move(constraints["audio"]);
-  EXPECT_EQ(audio.type(), Json::ValueType::objectValue);
+  json::Value constraints = std::move(root["constraints"]);
+  json::Value audio = std::move(constraints["audio"]);
+  EXPECT_EQ(audio.type(), json::ValueType::objectValue);
   EXPECT_EQ(audio["maxSampleRate"], 96000);
   EXPECT_EQ(audio["maxChannels"], 7);
   EXPECT_EQ(audio["minBitRate"], 32000);
   EXPECT_EQ(audio["maxBitRate"], 96000);
   EXPECT_EQ(audio["maxDelay"], 2000);
 
-  Json::Value video = std::move(constraints["video"]);
-  EXPECT_EQ(video.type(), Json::ValueType::objectValue);
+  json::Value video = std::move(constraints["video"]);
+  EXPECT_EQ(video.type(), json::ValueType::objectValue);
   EXPECT_EQ(video["maxPixelsPerSecond"], 40000.0);
   EXPECT_EQ(video["minBitRate"], 300000);
   EXPECT_EQ(video["maxBitRate"], 144000000);
   EXPECT_EQ(video["maxDelay"], 3000);
 
-  Json::Value min_resolution = std::move(video["minResolution"]);
-  EXPECT_EQ(min_resolution.type(), Json::ValueType::objectValue);
+  json::Value min_resolution = std::move(video["minResolution"]);
+  EXPECT_EQ(min_resolution.type(), json::ValueType::objectValue);
   EXPECT_EQ(min_resolution["width"], 320);
   EXPECT_EQ(min_resolution["height"], 480);
   EXPECT_EQ(min_resolution["frameRate"], "15000/101");
 
-  Json::Value max_dimensions = std::move(video["maxDimensions"]);
-  EXPECT_EQ(max_dimensions.type(), Json::ValueType::objectValue);
+  json::Value max_dimensions = std::move(video["maxDimensions"]);
+  EXPECT_EQ(max_dimensions.type(), json::ValueType::objectValue);
   EXPECT_EQ(max_dimensions["width"], 1920);
   EXPECT_EQ(max_dimensions["height"], 1080);
   EXPECT_EQ(max_dimensions["frameRate"], "288/2");
 
-  Json::Value display = std::move(root["display"]);
-  EXPECT_EQ(display.type(), Json::ValueType::objectValue);
+  json::Value display = std::move(root["display"]);
+  EXPECT_EQ(display.type(), json::ValueType::objectValue);
   EXPECT_EQ(display["aspectRatio"], "16:9");
   EXPECT_EQ(display["scaling"], "sender");
 
-  Json::Value dimensions = std::move(display["dimensions"]);
-  EXPECT_EQ(dimensions.type(), Json::ValueType::objectValue);
+  json::Value dimensions = std::move(display["dimensions"]);
+  EXPECT_EQ(dimensions.type(), json::ValueType::objectValue);
   EXPECT_EQ(dimensions["width"], 640);
   EXPECT_EQ(dimensions["height"], 480);
   EXPECT_EQ(dimensions["frameRate"], "30");
 
-  Json::Value receiver_rtcp_event_log = std::move(root["receiverRtcpEventLog"]);
-  EXPECT_EQ(receiver_rtcp_event_log.type(), Json::ValueType::arrayValue);
+  json::Value receiver_rtcp_event_log = std::move(root["receiverRtcpEventLog"]);
+  EXPECT_EQ(receiver_rtcp_event_log.type(), json::ValueType::arrayValue);
   EXPECT_EQ(receiver_rtcp_event_log[0], 7);
   EXPECT_EQ(receiver_rtcp_event_log[1], 8);
   EXPECT_EQ(receiver_rtcp_event_log[2], 9);
 
-  Json::Value receiver_rtcp_dscp = std::move(root["receiverRtcpDscp"]);
-  EXPECT_EQ(receiver_rtcp_dscp.type(), Json::ValueType::arrayValue);
+  json::Value receiver_rtcp_dscp = std::move(root["receiverRtcpDscp"]);
+  EXPECT_EQ(receiver_rtcp_dscp.type(), json::ValueType::arrayValue);
   EXPECT_EQ(receiver_rtcp_dscp[0], 1);
   EXPECT_EQ(receiver_rtcp_dscp[1], 3);
 
-  Json::Value rtp_extensions = std::move(root["rtpExtensions"]);
-  EXPECT_EQ(rtp_extensions.type(), Json::ValueType::arrayValue);
-  EXPECT_EQ(rtp_extensions[0].type(), Json::ValueType::arrayValue);
+  json::Value rtp_extensions = std::move(root["rtpExtensions"]);
+  EXPECT_EQ(rtp_extensions.type(), json::ValueType::arrayValue);
+  EXPECT_EQ(rtp_extensions[0].type(), json::ValueType::arrayValue);
   EXPECT_EQ(rtp_extensions[0][0], "foo");
-  EXPECT_EQ(rtp_extensions[1].type(), Json::ValueType::arrayValue);
+  EXPECT_EQ(rtp_extensions[1].type(), json::ValueType::arrayValue);
   EXPECT_EQ(rtp_extensions[1][0], "bar");
 }
 
@@ -262,7 +262,7 @@ TEST(AnswerMessagesTest, EmptyArraysOmitted) {
   Answer missing_event_log = GetValidAnswer();
   missing_event_log.receiver_rtcp_event_log.clear();
   ASSERT_TRUE(missing_event_log.IsValid());
-  Json::Value root = missing_event_log.ToJson();
+  json::Value root = missing_event_log.ToJson();
   EXPECT_FALSE(root["receiverRtcpEventLog"]);
 
   Answer missing_rtcp_dscp = GetValidAnswer();
@@ -331,13 +331,13 @@ TEST(AnswerMessagesTest, ErrorOnEmptyAnswer) {
 }
 
 TEST(AnswerMessagesTest, ErrorOnNonObjectAnswer) {
-  Json::Value array_val(Json::arrayValue);
+  json::Value array_val(json::arrayValue);
   EXPECT_TRUE(Answer::TryParse(array_val).is_error());
 
-  Json::Value string_val("string");
+  json::Value string_val("string");
   EXPECT_TRUE(Answer::TryParse(string_val).is_error());
 
-  Json::Value int_val(42);
+  json::Value int_val(42);
   EXPECT_TRUE(Answer::TryParse(int_val).is_error());
 }
 
@@ -515,18 +515,18 @@ TEST(AnswerMessagesTest, AspectRatioIsValid) {
 }
 
 TEST(AnswerMessagesTest, AspectRatioTryParse) {
-  const Json::Value kValid = "16:9";
-  const Json::Value kWrongDelimiter = "16-9";
-  const Json::Value kTooManyFields = "16:9:3";
-  const Json::Value kTooFewFields = "1:";
-  const Json::Value kNoDelimiter = "12345";
-  const Json::Value kNegativeWidth = "-123:2345";
-  const Json::Value kNegativeHeight = "22:-7";
-  const Json::Value kNegativeBoth = "22:-7";
-  const Json::Value kNonNumberWidth = "twenty2#:9";
-  const Json::Value kNonNumberHeight = "2:thirty";
-  const Json::Value kZeroWidth = "0:9";
-  const Json::Value kZeroHeight = "16:0";
+  const json::Value kValid = "16:9";
+  const json::Value kWrongDelimiter = "16-9";
+  const json::Value kTooManyFields = "16:9:3";
+  const json::Value kTooFewFields = "1:";
+  const json::Value kNoDelimiter = "12345";
+  const json::Value kNegativeWidth = "-123:2345";
+  const json::Value kNegativeHeight = "22:-7";
+  const json::Value kNegativeBoth = "22:-7";
+  const json::Value kNonNumberWidth = "twenty2#:9";
+  const json::Value kNonNumberHeight = "2:thirty";
+  const json::Value kZeroWidth = "0:9";
+  const json::Value kZeroHeight = "16:0";
 
   const auto out = AspectRatio::TryParse(kValid);
   ASSERT_TRUE(out.is_value());
@@ -547,27 +547,27 @@ TEST(AnswerMessagesTest, AspectRatioTryParse) {
 }
 
 TEST(AnswerMessagesTest, DisplayDescriptionTryParse) {
-  Json::Value valid_scaling;
+  json::Value valid_scaling;
   valid_scaling["scaling"] = "receiver";
-  Json::Value invalid_scaling;
+  json::Value invalid_scaling;
   invalid_scaling["scaling"] = "embedder";
-  Json::Value invalid_scaling_valid_ratio;
+  json::Value invalid_scaling_valid_ratio;
   invalid_scaling_valid_ratio["scaling"] = "embedder";
   invalid_scaling_valid_ratio["aspectRatio"] = "16:9";
 
-  Json::Value dimensions;
+  json::Value dimensions;
   dimensions["width"] = 1920;
   dimensions["height"] = 1080;
   dimensions["frameRate"] = "30";
-  Json::Value valid_dimensions;
+  json::Value valid_dimensions;
   valid_dimensions["dimensions"] = dimensions;
 
-  Json::Value dimensions_invalid = dimensions;
+  json::Value dimensions_invalid = dimensions;
   dimensions_invalid["frameRate"] = "infinity";
-  Json::Value invalid_dimensions;
+  json::Value invalid_dimensions;
   invalid_dimensions["dimensions"] = dimensions_invalid;
 
-  Json::Value aspect_ratio_and_constraint;
+  json::Value aspect_ratio_and_constraint;
   aspect_ratio_and_constraint["scaling"] = "sender";
   aspect_ratio_and_constraint["aspectRatio"] = "4:3";
 
@@ -656,7 +656,7 @@ std::string GenerateAnswerWithDataTransport(std::string_view protocol,
 }
 
 TEST(AnswerTest, CanParseValidAnswerWithDataTransport) {
-  ErrorOr<Json::Value> root = json::Parse(
+  ErrorOr<json::Value> root = json::Parse(
       GenerateAnswerWithDataTransport("webtransport", 4321, "abcde12345"));
   ASSERT_TRUE(root.is_value()) << root.error();
 
@@ -670,7 +670,7 @@ TEST(AnswerTest, CanParseValidAnswerWithDataTransport) {
             "abcde12345");
 
   // Serialization check.
-  Json::Value serialized = answer_or_error.value().ToJson();
+  json::Value serialized = answer_or_error.value().ToJson();
   EXPECT_TRUE(serialized.isMember("dataTransport"));
   EXPECT_EQ(serialized["dataTransport"]["protocol"].asString(), "webtransport");
   EXPECT_EQ(serialized["dataTransport"]["port"].asInt(), 4321);
@@ -679,7 +679,7 @@ TEST(AnswerTest, CanParseValidAnswerWithDataTransport) {
 }
 
 TEST(AnswerTest, ErrorOnInvalidDataTransport) {
-  ErrorOr<Json::Value> root = json::Parse(
+  ErrorOr<json::Value> root = json::Parse(
       GenerateAnswerWithDataTransport("webtransport", -1, "abcde12345"));
   ASSERT_TRUE(root.is_value()) << root.error();
   EXPECT_TRUE(Answer::TryParse(std::move(root.value())).is_error());

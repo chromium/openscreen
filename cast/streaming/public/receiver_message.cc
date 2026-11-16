@@ -9,8 +9,6 @@
 #include <variant>
 
 #include "cast/streaming/message_fields.h"
-#include "json/reader.h"
-#include "json/writer.h"
 #include "platform/base/error.h"
 #include "util/base64.h"
 #include "util/enum_name_table.h"
@@ -41,7 +39,7 @@ EnumNameTable<MediaCapability, 10> kMediaCapabilityNames{
      {"hevc", MediaCapability::kHevc},
      {"av1", MediaCapability::kAv1}}};
 
-ReceiverMessage::Type GetMessageType(const Json::Value& root) {
+ReceiverMessage::Type GetMessageType(const json::Value& root) {
   std::string type;
   if (!json::TryParseString(root[kMessageType], &type)) {
     return ReceiverMessage::Type::kUnknown;
@@ -52,7 +50,7 @@ ReceiverMessage::Type GetMessageType(const Json::Value& root) {
   return parsed.value(ReceiverMessage::Type::kUnknown);
 }
 
-bool TryParseCapability(const Json::Value& value, MediaCapability* out) {
+bool TryParseCapability(const json::Value& value, MediaCapability* out) {
   std::string c;
   if (!json::TryParseString(value, &c)) {
     return false;
@@ -93,7 +91,7 @@ ReceiverError& ReceiverError::operator=(ReceiverError&&) = default;
 ReceiverError::~ReceiverError() = default;
 
 // static
-ErrorOr<ReceiverError> ReceiverError::Parse(const Json::Value& value) {
+ErrorOr<ReceiverError> ReceiverError::Parse(const json::Value& value) {
   if (!value.isObject()) {
     return Error(Error::Code::kParameterInvalid,
                  "Empty JSON in receiver error parsing");
@@ -109,8 +107,8 @@ ErrorOr<ReceiverError> ReceiverError::Parse(const Json::Value& value) {
   return ReceiverError(code, description);
 }
 
-Json::Value ReceiverError::ToJson() const {
-  Json::Value root;
+json::Value ReceiverError::ToJson() const {
+  json::Value root;
   root[kErrorCode] = openscreen_code ? static_cast<int>(*openscreen_code) +
                                            kOpenscreenErrorOffset
                                      : code;
@@ -130,7 +128,7 @@ Error ReceiverError::ToError() const {
 
 // static
 ErrorOr<ReceiverCapability> ReceiverCapability::Parse(
-    const Json::Value& value) {
+    const json::Value& value) {
   if (!value.isObject()) {
     return Error(Error::Code::kParameterInvalid,
                  "Empty JSON in capabilities parsing");
@@ -151,10 +149,10 @@ ErrorOr<ReceiverCapability> ReceiverCapability::Parse(
   return ReceiverCapability{remoting_version, std::move(capabilities)};
 }
 
-Json::Value ReceiverCapability::ToJson() const {
-  Json::Value root;
+json::Value ReceiverCapability::ToJson() const {
+  json::Value root;
   root["remoting"] = remoting_version;
-  Json::Value capabilities(Json::ValueType::arrayValue);
+  json::Value capabilities(json::ValueType::arrayValue);
   for (const auto& capability : media_capabilities) {
     capabilities.append(GetEnumName(kMediaCapabilityNames, capability).value());
   }
@@ -163,7 +161,7 @@ Json::Value ReceiverCapability::ToJson() const {
 }
 
 // static
-ErrorOr<ReceiverMessage> ReceiverMessage::Parse(const Json::Value& value) {
+ErrorOr<ReceiverMessage> ReceiverMessage::Parse(const json::Value& value) {
   ReceiverMessage message;
   if (!value.isObject()) {
     return Error(Error::Code::kJsonParseError, "Invalid message body");
@@ -247,11 +245,11 @@ ErrorOr<ReceiverMessage> ReceiverMessage::Parse(const Json::Value& value) {
   return message;
 }
 
-ErrorOr<Json::Value> ReceiverMessage::ToJson() const {
+ErrorOr<json::Value> ReceiverMessage::ToJson() const {
   OSP_CHECK(type != ReceiverMessage::Type::kUnknown)
       << "Trying to send an unknown message is a developer error";
 
-  Json::Value root;
+  json::Value root;
   root[kMessageType] = GetEnumName(kMessageTypeNames, type).value();
   if (sequence_number >= 0) {
     root[kSequenceNumber] = sequence_number;

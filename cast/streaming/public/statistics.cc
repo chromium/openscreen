@@ -18,20 +18,20 @@ namespace openscreen::cast {
 namespace {
 
 template <typename Type>
-Json::Value ToJson(const Type& t) {
+json::Value ToJson(const Type& t) {
   return t.ToJson();
 }
 
 template <>
-Json::Value ToJson(const double& t) {
+json::Value ToJson(const double& t) {
   return t;
 }
 
 template <typename T, typename Type>
-Json::Value ArrayToJson(
+json::Value ArrayToJson(
     const std::array<T, static_cast<size_t>(Type::kNumTypes)>& list,
     const EnumNameTable<Type, static_cast<size_t>(Type::kNumTypes)>& names) {
-  Json::Value out;
+  json::Value out;
   for (size_t i = 0; i < list.size(); ++i) {
     ErrorOr<const char*> name = GetEnumName(names, static_cast<Type>(i));
     OSP_CHECK(name);
@@ -116,13 +116,13 @@ void SimpleHistogram::Reset() {
   buckets.assign(buckets.size(), 0);
 }
 
-Json::Value SimpleHistogram::ToJson() const {
+json::Value SimpleHistogram::ToJson() const {
   // Nest the bucket values in an array instead of a dictionary, so we sort
   // numerically instead of alphabetically.
-  Json::Value out(Json::ValueType::arrayValue);
+  json::Value out(json::ValueType::arrayValue);
   for (size_t i = 0; i < buckets.size(); ++i) {
     if (buckets[i] != 0) {
-      Json::Value entry;
+      json::Value entry;
       entry[GetBucketName(i)] = buckets[i];
       out.append(entry);
     }
@@ -158,8 +158,8 @@ std::string SimpleHistogram::GetBucketName(size_t index) const {
   return std::format("{}-{}", bucket_min, bucket_max);
 }
 
-Json::Value SenderStats::ToJson() const {
-  Json::Value out;
+json::Value SenderStats::ToJson() const {
+  json::Value out;
   out["audio_statistics"] = ArrayToJson(audio_statistics, kStatisticTypeNames);
   out["audio_histograms"] = ArrayToJson(audio_histograms, kHistogramTypeNames);
   out["video_statistics"] = ArrayToJson(video_statistics, kStatisticTypeNames);

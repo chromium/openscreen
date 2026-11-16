@@ -38,7 +38,7 @@ bool FrameRateEquals(double a, double b) {
 
 }  // namespace
 
-ErrorOr<Resolution> Resolution::TryParse(const Json::Value& root) {
+ErrorOr<Resolution> Resolution::TryParse(const json::Value& root) {
   if (!root.isObject()) {
     return Error(Error::Code::kJsonParseError,
                  "Resolution is not a JSON object");
@@ -59,9 +59,9 @@ bool Resolution::IsValid() const {
   return width > 0 && height > 0;
 }
 
-Json::Value Resolution::ToJson() const {
+json::Value Resolution::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value root;
+  json::Value root;
   root[kWidth] = width;
   root[kHeight] = height;
 
@@ -80,7 +80,7 @@ bool Resolution::IsSupersetOf(const Resolution& other) const {
   return width >= other.width && height >= other.height;
 }
 
-ErrorOr<Dimensions> Dimensions::TryParse(const Json::Value& root) {
+ErrorOr<Dimensions> Dimensions::TryParse(const json::Value& root) {
   if (!root.isObject()) {
     return Error(Error::Code::kJsonParseError,
                  "Dimensions is not a JSON object");
@@ -108,9 +108,9 @@ bool Dimensions::IsValid() const {
   return width > 0 && height > 0 && frame_rate.is_positive();
 }
 
-Json::Value Dimensions::ToJson() const {
+json::Value Dimensions::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value root;
+  json::Value root;
   root[kWidth] = width;
   root[kHeight] = height;
   root[kFrameRate] = frame_rate.ToString();

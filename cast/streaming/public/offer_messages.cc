@@ -78,7 +78,7 @@ EnumNameTable<CastMode, 2> kCastModeNames{
 EnumNameTable<DataTransportProtocol, 1> kDataTransportProtocolNames{
     {{"webtransport", DataTransportProtocol::kWebTransport}}};
 
-bool TryParseRtpPayloadType(const Json::Value& value, RtpPayloadType* out) {
+bool TryParseRtpPayloadType(const json::Value& value, RtpPayloadType* out) {
   int t;
   if (!json::TryParseInt(value, &t)) {
     return false;
@@ -93,7 +93,7 @@ bool TryParseRtpPayloadType(const Json::Value& value, RtpPayloadType* out) {
   return true;
 }
 
-bool TryParseRtpTimebase(const Json::Value& value, int* out) {
+bool TryParseRtpTimebase(const json::Value& value, int* out) {
   std::string raw_timebase;
   if (!json::TryParseString(value, &raw_timebase)) {
     return false;
@@ -115,7 +115,7 @@ bool TryParseRtpTimebase(const Json::Value& value, int* out) {
 constexpr int kHexDigitsPerByte = 2;
 constexpr int kAesBytesSize = 16;
 constexpr int kAesStringLength = kAesBytesSize * kHexDigitsPerByte;
-bool TryParseAesHexBytes(const Json::Value& value,
+bool TryParseAesHexBytes(const json::Value& value,
                          std::array<uint8_t, kAesBytesSize>* out) {
   std::string hex_string;
   if (!json::TryParseString(value, &hex_string)) {
@@ -152,7 +152,7 @@ std::string_view ToString(Stream::Type type) {
   }
 }
 
-bool TryParseResolutions(const Json::Value& value,
+bool TryParseResolutions(const json::Value& value,
                          std::vector<Resolution>* out) {
   out->clear();
 
@@ -161,7 +161,7 @@ bool TryParseResolutions(const Json::Value& value,
     return false;
   }
 
-  for (Json::ArrayIndex i = 0; i < value.size(); ++i) {
+  for (json::ArrayIndex i = 0; i < value.size(); ++i) {
     auto resolution = Resolution::TryParse(value[i]);
     if (resolution.is_error()) {
       out->clear();
@@ -175,7 +175,7 @@ bool TryParseResolutions(const Json::Value& value,
 
 }  // namespace
 
-ErrorOr<Stream> Stream::TryParse(const Json::Value& value, Stream::Type type) {
+ErrorOr<Stream> Stream::TryParse(const json::Value& value, Stream::Type type) {
   if (!value.isObject()) {
     return Error(Error::Code::kJsonParseError, "Stream is not a JSON object");
   }
@@ -237,10 +237,10 @@ ErrorOr<Stream> Stream::TryParse(const Json::Value& value, Stream::Type type) {
   return out;
 }
 
-Json::Value Stream::ToJson() const {
+json::Value Stream::ToJson() const {
   OSP_CHECK(IsValid());
 
-  Json::Value root;
+  json::Value root;
   root["index"] = index;
   root["type"] = std::string(ToString(type));
   root["channels"] = channels;
@@ -248,9 +248,9 @@ Json::Value Stream::ToJson() const {
   // rtpProfile is technically required by the spec, although it is always set
   // to cast. We set it here to be compliant with all spec implementers.
   root["rtpProfile"] = "cast";
-  static_assert(sizeof(ssrc) <= sizeof(Json::UInt),
-                "this code assumes Ssrc fits in a Json::UInt");
-  root["ssrc"] = static_cast<Json::UInt>(ssrc);
+  static_assert(sizeof(ssrc) <= sizeof(json::UInt),
+                "this code assumes Ssrc fits in a json::UInt");
+  root["ssrc"] = static_cast<json::UInt>(ssrc);
   root["targetDelay"] = static_cast<int>(target_delay.count());
   root["aesKey"] = HexEncode(aes_key.data(), aes_key.size());
   root["aesIvMask"] = HexEncode(aes_iv_mask.data(), aes_iv_mask.size());
@@ -272,7 +272,7 @@ bool Stream::IsValid() const {
          rtp_timebase >= 1;
 }
 
-ErrorOr<AudioStream> AudioStream::TryParse(const Json::Value& value) {
+ErrorOr<AudioStream> AudioStream::TryParse(const json::Value& value) {
   if (!value.isObject()) {
     return Error(Error::Code::kJsonParseError,
                  "Audio stream is not a JSON object");
@@ -306,10 +306,10 @@ ErrorOr<AudioStream> AudioStream::TryParse(const Json::Value& value) {
   return out;
 }
 
-Json::Value AudioStream::ToJson() const {
+json::Value AudioStream::ToJson() const {
   OSP_CHECK(IsValid());
 
-  Json::Value out = stream.ToJson();
+  json::Value out = stream.ToJson();
   out[kCodecName] = CodecToString(codec);
   out["bitRate"] = bit_rate;
   return out;
@@ -319,7 +319,7 @@ bool AudioStream::IsValid() const {
   return bit_rate >= 0 && stream.IsValid();
 }
 
-ErrorOr<VideoStream> VideoStream::TryParse(const Json::Value& value) {
+ErrorOr<VideoStream> VideoStream::TryParse(const json::Value& value) {
   if (!value.isObject()) {
     return Error(Error::Code::kJsonParseError,
                  "Video stream is not a JSON object");
@@ -371,10 +371,10 @@ ErrorOr<VideoStream> VideoStream::TryParse(const Json::Value& value) {
   return out;
 }
 
-Json::Value VideoStream::ToJson() const {
+json::Value VideoStream::ToJson() const {
   OSP_CHECK(IsValid());
 
-  Json::Value out = stream.ToJson();
+  json::Value out = stream.ToJson();
   out["codecName"] = CodecToString(codec);
   out["maxFrameRate"] = max_frame_rate.ToString();
   out["maxBitRate"] = max_bit_rate;
@@ -383,7 +383,7 @@ Json::Value VideoStream::ToJson() const {
   out["level"] = level;
   out["errorRecoveryMode"] = error_recovery_mode;
 
-  Json::Value rs;
+  json::Value rs;
   for (auto resolution : resolutions) {
     rs.append(resolution.ToJson());
   }
@@ -395,7 +395,7 @@ bool VideoStream::IsValid() const {
   return max_bit_rate > 0 && max_frame_rate.is_positive();
 }
 
-ErrorOr<DataTransport> DataTransport::TryParse(const Json::Value& value) {
+ErrorOr<DataTransport> DataTransport::TryParse(const json::Value& value) {
   if (!value.isObject()) {
     return Error(Error::Code::kJsonParseError, "null dataTransport");
   }
@@ -414,9 +414,9 @@ ErrorOr<DataTransport> DataTransport::TryParse(const Json::Value& value) {
   return out;
 }
 
-Json::Value DataTransport::ToJson() const {
+json::Value DataTransport::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value out;
+  json::Value out;
   out["protocol"] = GetEnumName(kDataTransportProtocolNames, protocol).value();
   return out;
 }
@@ -426,13 +426,13 @@ bool DataTransport::IsValid() const {
 }
 
 // static
-ErrorOr<Offer> Offer::TryParse(const Json::Value& root) {
+ErrorOr<Offer> Offer::TryParse(const json::Value& root) {
   if (!root.isObject()) {
     return Error(Error::Code::kJsonParseError, "null offer");
   }
   const ErrorOr<CastMode> cast_mode =
       GetEnum(kCastModeNames, root["castMode"].asString());
-  Json::Value supported_streams = root[kSupportedStreams];
+  json::Value supported_streams = root[kSupportedStreams];
   if (!supported_streams.isArray()) {
     return Error(Error::Code::kJsonParseError, "supported streams in offer");
   }
@@ -442,8 +442,8 @@ ErrorOr<Offer> Offer::TryParse(const Json::Value& root) {
 
   using Dscp = std::optional<int>;
   std::optional<Dscp> receiver_rtcp_dscp;
-  for (Json::ArrayIndex i = 0; i < supported_streams.size(); ++i) {
-    const Json::Value& fields = supported_streams[i];
+  for (json::ArrayIndex i = 0; i < supported_streams.size(); ++i) {
+    const json::Value& fields = supported_streams[i];
     std::string type;
     if (!json::TryParseString(fields[kStreamType], &type)) {
       return Error(Error::Code::kJsonParseError, "Missing stream type");
@@ -508,11 +508,11 @@ ErrorOr<Offer> Offer::TryParse(const Json::Value& root) {
   return offer;
 }
 
-Json::Value Offer::ToJson() const {
+json::Value Offer::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value root;
+  json::Value root;
   root["castMode"] = GetEnumName(kCastModeNames, cast_mode).value();
-  Json::Value streams;
+  json::Value streams;
   for (auto& stream : audio_streams) {
     streams.append(stream.ToJson());
   }

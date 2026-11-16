@@ -104,7 +104,7 @@ constexpr char kValidOffer[] = R"({
 
 void ExpectFailureOnParse(std::string_view body,
                           std::optional<Error::Code> expected = std::nullopt) {
-  ErrorOr<Json::Value> root = json::Parse(body);
+  ErrorOr<json::Value> root = json::Parse(body);
   ASSERT_TRUE(root.is_value()) << root.error();
 
   const auto offer_or_error = Offer::TryParse(std::move(root.value()));
@@ -226,13 +226,13 @@ TEST(OfferTest, ErrorOnEmptyOffer) {
 }
 
 TEST(OfferTest, ErrorOnNonObjectOffer) {
-  Json::Value array_val(Json::arrayValue);
+  json::Value array_val(json::arrayValue);
   EXPECT_TRUE(Offer::TryParse(array_val).is_error());
 
-  Json::Value string_val("string");
+  json::Value string_val("string");
   EXPECT_TRUE(Offer::TryParse(string_val).is_error());
 
-  Json::Value int_val(42);
+  json::Value int_val(42);
   EXPECT_TRUE(Offer::TryParse(int_val).is_error());
 }
 
@@ -245,7 +245,7 @@ TEST(OfferTest, ErrorOnMissingMandatoryFields) {
 }
 
 TEST(OfferTest, CanParseValidButStreamlessOffer) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "castMode": "mirroring",
     "supportedStreams": []
   })");
@@ -284,7 +284,7 @@ TEST(OfferTest, ErrorOnMissingAudioStreamMandatoryField) {
 }
 
 TEST(OfferTest, CanParseValidButMinimalAudioOffer) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "castMode": "mirroring",
     "supportedStreams": [{
       "index": 2,
@@ -306,7 +306,7 @@ TEST(OfferTest, CanParseValidButMinimalAudioOffer) {
 }
 
 TEST(OfferTest, CanParseValidZeroBitRateAudioOffer) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "castMode": "mirroring",
     "supportedStreams": [{
       "index": 2,
@@ -509,7 +509,7 @@ TEST(OfferTest, ValidatesCodecParameterFormat) {
     }]
   })");
 
-  const ErrorOr<Json::Value> audio_root = json::Parse(R"({
+  const ErrorOr<json::Value> audio_root = json::Parse(R"({
     "castMode": "mirroring",
     "supportedStreams": [{
       "index": 2,
@@ -528,7 +528,7 @@ TEST(OfferTest, ValidatesCodecParameterFormat) {
   })");
   ASSERT_TRUE(audio_root.is_value()) << audio_root.error();
 
-  const ErrorOr<Json::Value> video_root = json::Parse(R"({
+  const ErrorOr<json::Value> video_root = json::Parse(R"({
     "castMode": "mirroring",
     "supportedStreams": [{
       "index": 2,
@@ -548,7 +548,7 @@ TEST(OfferTest, ValidatesCodecParameterFormat) {
 }
 
 TEST(OfferTest, CanParseValidButMinimalVideoOffer) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "castMode": "mirroring",
     "supportedStreams": [{
       "index": 2,
@@ -571,7 +571,7 @@ TEST(OfferTest, CanParseValidButMinimalVideoOffer) {
 }
 
 TEST(OfferTest, CanParseValidOffer) {
-  ErrorOr<Json::Value> root = json::Parse(kValidOffer);
+  ErrorOr<json::Value> root = json::Parse(kValidOffer);
   ASSERT_TRUE(root.is_value());
   const auto offer_or_error = Offer::TryParse(root.value());
   ASSERT_TRUE(offer_or_error.is_value());
@@ -580,7 +580,7 @@ TEST(OfferTest, CanParseValidOffer) {
 }
 
 TEST(OfferTest, ParseAndToJsonResultsInSameOffer) {
-  ErrorOr<Json::Value> root = json::Parse(kValidOffer);
+  ErrorOr<json::Value> root = json::Parse(kValidOffer);
   ASSERT_TRUE(root.is_value());
   const auto offer_or_error = Offer::TryParse(root.value());
   ASSERT_TRUE(offer_or_error.is_value());
@@ -594,7 +594,7 @@ TEST(OfferTest, ParseAndToJsonResultsInSameOffer) {
 // We don't want to enforce that a given offer must have both audio and
 // video, so we don't assert on either.
 TEST(OfferTest, IsValidWithMissingStreams) {
-  ErrorOr<Json::Value> root = json::Parse(kValidOffer);
+  ErrorOr<json::Value> root = json::Parse(kValidOffer);
   ASSERT_TRUE(root.is_value());
   const auto offer_or_error = Offer::TryParse(root.value());
   ASSERT_TRUE(offer_or_error.is_value());
@@ -611,7 +611,7 @@ TEST(OfferTest, IsValidWithMissingStreams) {
 }
 
 TEST(OfferTest, InvalidIfInvalidStreams) {
-  ErrorOr<Json::Value> root = json::Parse(kValidOffer);
+  ErrorOr<json::Value> root = json::Parse(kValidOffer);
   ASSERT_TRUE(root.is_value());
   const auto offer_or_error = Offer::TryParse(root.value());
   ASSERT_TRUE(offer_or_error.is_value());
@@ -755,7 +755,7 @@ TEST(OfferTest, ErrorOnMixedDscpValues) {
 }
 
 TEST(OfferTest, CanParseValidOfferWithDataTransport) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "castMode": "mirroring",
     "supportedStreams": [],
     "dataTransport": {
@@ -771,7 +771,7 @@ TEST(OfferTest, CanParseValidOfferWithDataTransport) {
             DataTransportProtocol::kWebTransport);
 
   // Serialization check.
-  Json::Value serialized = offer_or_error.value().ToJson();
+  json::Value serialized = offer_or_error.value().ToJson();
   EXPECT_TRUE(serialized.isMember("dataTransport"));
   EXPECT_EQ(serialized["dataTransport"]["protocol"].asString(), "webtransport");
 }

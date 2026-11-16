@@ -10,16 +10,16 @@
 #ifndef CAST_STREAMING_RESOLUTION_H_
 #define CAST_STREAMING_RESOLUTION_H_
 
-#include "json/value.h"
+#include "util/json/json_value.h"
 #include "util/simple_fraction.h"
 
 namespace openscreen::cast {
 
 // A resolution in pixels.
 struct Resolution {
-  static ErrorOr<Resolution> TryParse(const Json::Value& value);
+  static ErrorOr<Resolution> TryParse(const json::Value& value);
   bool IsValid() const;
-  Json::Value ToJson() const;
+  json::Value ToJson() const;
 
   // Returns true if both `width` and `height` of this instance are greater than
   // or equal to that of `other`.
@@ -35,9 +35,9 @@ struct Resolution {
 
 // A resolution in pixels and a frame rate.
 struct Dimensions {
-  static ErrorOr<Dimensions> TryParse(const Json::Value& value);
+  static ErrorOr<Dimensions> TryParse(const json::Value& value);
   bool IsValid() const;
-  Json::Value ToJson() const;
+  json::Value ToJson() const;
 
   // Returns true if all properties of this instance are greater than or equal
   // to those of `other`.

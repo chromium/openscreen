@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "cast/streaming/public/offer_messages.h"
-#include "json/value.h"
 #include "platform/base/error.h"
+#include "util/json/json_value.h"
 #include "util/osp_logging.h"
 
 namespace openscreen::cast {
@@ -37,8 +37,8 @@ struct SenderMessage {
     kInput,
   };
 
-  static ErrorOr<SenderMessage> Parse(const Json::Value& value);
-  ErrorOr<Json::Value> ToJson() const;
+  static ErrorOr<SenderMessage> Parse(const json::Value& value);
+  ErrorOr<json::Value> ToJson() const;
 
   Type type = Type::kUnknown;
   int32_t sequence_number = -1;

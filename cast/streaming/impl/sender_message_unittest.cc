@@ -13,18 +13,18 @@
 namespace openscreen::cast {
 
 TEST(SenderMessageTest, ErrorOnNonObjectMessage) {
-  Json::Value array_val(Json::arrayValue);
+  json::Value array_val(json::arrayValue);
   EXPECT_TRUE(SenderMessage::Parse(array_val).is_error());
 
-  Json::Value string_val("string");
+  json::Value string_val("string");
   EXPECT_TRUE(SenderMessage::Parse(string_val).is_error());
 
-  Json::Value int_val(42);
+  json::Value int_val(42);
   EXPECT_TRUE(SenderMessage::Parse(int_val).is_error());
 }
 
 TEST(SenderMessageTest, ParsesGetCapabilities) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "type": "GET_CAPABILITIES",
     "seqNum": 123
   })");
@@ -36,14 +36,14 @@ TEST(SenderMessageTest, ParsesGetCapabilities) {
   EXPECT_EQ(123, message.value().sequence_number);
   EXPECT_TRUE(message.value().valid);
 
-  ErrorOr<Json::Value> serialized = message.value().ToJson();
+  ErrorOr<json::Value> serialized = message.value().ToJson();
   ASSERT_TRUE(serialized.is_value());
   EXPECT_EQ(json::Stringify(root.value()).value(),
             json::Stringify(serialized.value()).value());
 }
 
 TEST(SenderMessageTest, ParsesRpc) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "type": "RPC",
     "seqNum": 456,
     "rpc": "SGVsbG8="
@@ -61,14 +61,14 @@ TEST(SenderMessageTest, ParsesRpc) {
   EXPECT_EQ(expected_body,
             std::get<std::vector<uint8_t>>(message.value().body));
 
-  ErrorOr<Json::Value> serialized = message.value().ToJson();
+  ErrorOr<json::Value> serialized = message.value().ToJson();
   ASSERT_TRUE(serialized.is_value());
   EXPECT_EQ(json::Stringify(root.value()).value(),
             json::Stringify(serialized.value()).value());
 }
 
 TEST(SenderMessageTest, ParsesInput) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "type": "INPUT",
     "seqNum": 789,
     "input": "V29ybGQ="
@@ -86,14 +86,14 @@ TEST(SenderMessageTest, ParsesInput) {
   EXPECT_EQ(expected_body,
             std::get<std::vector<uint8_t>>(message.value().body));
 
-  ErrorOr<Json::Value> serialized = message.value().ToJson();
+  ErrorOr<json::Value> serialized = message.value().ToJson();
   ASSERT_TRUE(serialized.is_value());
   EXPECT_EQ(json::Stringify(root.value()).value(),
             json::Stringify(serialized.value()).value());
 }
 
 TEST(SenderMessageTest, ParsesOffer) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "type": "OFFER",
     "seqNum": 101,
     "offer": {
@@ -143,14 +143,14 @@ TEST(SenderMessageTest, ParsesOffer) {
   EXPECT_TRUE(message.value().valid);
   ASSERT_TRUE(std::holds_alternative<Offer>(message.value().body));
 
-  ErrorOr<Json::Value> serialized = message.value().ToJson();
+  ErrorOr<json::Value> serialized = message.value().ToJson();
   ASSERT_TRUE(serialized.is_value());
   EXPECT_EQ(json::Stringify(root.value()).value(),
             json::Stringify(serialized.value()).value());
 }
 
 TEST(SenderMessageTest, HandlesMissingSequenceNumber) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "type": "GET_CAPABILITIES"
   })");
   ASSERT_TRUE(root.is_value());
@@ -161,14 +161,14 @@ TEST(SenderMessageTest, HandlesMissingSequenceNumber) {
   EXPECT_EQ(-1, message.value().sequence_number);
   EXPECT_TRUE(message.value().valid);
 
-  ErrorOr<Json::Value> serialized = message.value().ToJson();
+  ErrorOr<json::Value> serialized = message.value().ToJson();
   ASSERT_TRUE(serialized.is_value());
   EXPECT_EQ(json::Stringify(root.value()).value(),
             json::Stringify(serialized.value()).value());
 }
 
 TEST(SenderMessageTest, InvalidMissingBody) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "type": "RPC",
     "seqNum": 456
   })");
@@ -181,7 +181,7 @@ TEST(SenderMessageTest, InvalidMissingBody) {
 }
 
 TEST(SenderMessageTest, HandlesUnknownType) {
-  ErrorOr<Json::Value> root = json::Parse(R"({
+  ErrorOr<json::Value> root = json::Parse(R"({
     "type": "UNKNOWN_GARBAGE",
     "seqNum": 123
   })");

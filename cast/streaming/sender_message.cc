@@ -24,7 +24,7 @@ EnumNameTable<SenderMessage::Type, 4> kMessageTypeNames{
      {"RPC", SenderMessage::Type::kRpc},
      {"INPUT", SenderMessage::Type::kInput}}};
 
-SenderMessage::Type GetMessageType(const Json::Value& root) {
+SenderMessage::Type GetMessageType(const json::Value& root) {
   std::string type;
   if (!json::TryParseString(root[kMessageType], &type)) {
     return SenderMessage::Type::kUnknown;
@@ -38,7 +38,7 @@ SenderMessage::Type GetMessageType(const Json::Value& root) {
 }  // namespace
 
 // static
-ErrorOr<SenderMessage> SenderMessage::Parse(const Json::Value& value) {
+ErrorOr<SenderMessage> SenderMessage::Parse(const json::Value& value) {
   if (!value.isObject()) {
     return Error(Error::Code::kParameterInvalid,
                  "SenderMessage body is not a JSON object");
@@ -90,11 +90,11 @@ ErrorOr<SenderMessage> SenderMessage::Parse(const Json::Value& value) {
   return message;
 }
 
-ErrorOr<Json::Value> SenderMessage::ToJson() const {
+ErrorOr<json::Value> SenderMessage::ToJson() const {
   OSP_CHECK(type != SenderMessage::Type::kUnknown)
       << "Trying to send an unknown message is a developer error";
 
-  Json::Value root;
+  json::Value root;
   ErrorOr<const char*> message_type = GetEnumName(kMessageTypeNames, type);
   root[kMessageType] = message_type.value();
   if (sequence_number >= 0) {

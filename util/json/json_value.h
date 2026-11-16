@@ -142,6 +142,28 @@ class Value {
     return !rhs.EqualsJsonCpp(lhs);
   }
 
+  // Comparison with primitives:
+  bool operator==(const char* other) const {
+    return isString() && asString() == other;
+  }
+  bool operator==(std::string_view other) const {
+    return isString() && asString() == other;
+  }
+  bool operator==(int other) const { return isInt() && asInt() == other; }
+  bool operator==(int64_t other) const {
+    return isInt64() && asInt64() == other;
+  }
+  bool operator==(uint32_t other) const {
+    return isUInt() && asUInt() == other;
+  }
+  bool operator==(uint64_t other) const {
+    return isUInt64() && asUInt64() == other;
+  }
+  bool operator==(double other) const {
+    return isDouble() && asDouble() == other;
+  }
+  bool operator==(bool other) const { return isBool() && asBool() == other; }
+
   Value(const Value& other);
   Value(Value&& other) noexcept;
   // Safe when `other` is owned by this value, for example `v = v["key"]`.

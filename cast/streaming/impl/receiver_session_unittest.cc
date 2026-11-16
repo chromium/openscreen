@@ -476,25 +476,25 @@ class FakeClient : public ReceiverSession::Client {
 };
 
 void ExpectIsErrorAnswer(const std::string& raw_message) {
-  ErrorOr<Json::Value> message_or_error = json::Parse(raw_message);
+  ErrorOr<json::Value> message_or_error = json::Parse(raw_message);
   ASSERT_TRUE(message_or_error.is_value());
-  const Json::Value message = std::move(message_or_error.value());
+  const json::Value message = std::move(message_or_error.value());
   EXPECT_TRUE(message["answer"].isNull());
   EXPECT_EQ("error", message["result"].asString());
   EXPECT_EQ(1337, message["seqNum"].asInt());
   EXPECT_EQ("ANSWER", message["type"].asString());
 
-  const Json::Value& error = message["error"];
+  const json::Value& error = message["error"];
   EXPECT_TRUE(error.isObject());
   EXPECT_GT(error["code"].asInt(), 0);
 }
 
 // Returns the parsed and validated ANSWER message for additional field
 // validation.
-Json::Value ExpectIsValidAnswer(const std::string& raw_message) {
-  ErrorOr<Json::Value> message_or_error = json::Parse(raw_message);
+json::Value ExpectIsValidAnswer(const std::string& raw_message) {
+  ErrorOr<json::Value> message_or_error = json::Parse(raw_message);
   EXPECT_TRUE(message_or_error.is_value());
-  Json::Value message = std::move(message_or_error.value());
+  json::Value message = std::move(message_or_error.value());
 
   EXPECT_EQ("ANSWER", message["type"].asString());
   EXPECT_EQ("ok", message["result"].asString());
@@ -670,13 +670,13 @@ TEST_F(ReceiverSessionTest, CanNegotiateWithDefaultConstraints) {
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
 
-  Json::Value message = ExpectIsValidAnswer(messages[0]);
+  json::Value message = ExpectIsValidAnswer(messages[0]);
 
   EXPECT_EQ("ANSWER", message["type"].asString());
   EXPECT_EQ(1337, message["seqNum"].asInt());
   EXPECT_EQ("ok", message["result"].asString());
 
-  const Json::Value& answer = message["answer"];
+  const json::Value& answer = message["answer"];
   EXPECT_TRUE(answer.isObject());
 
   // Spot check the answer body fields. We have more in depth testing
@@ -896,24 +896,24 @@ TEST_F(ReceiverSessionTest, CanNegotiateWithLimits) {
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
 
-  Json::Value message_body = ExpectIsValidAnswer(messages[0]);
-  const Json::Value& answer_json = message_body["answer"];
+  json::Value message_body = ExpectIsValidAnswer(messages[0]);
+  const json::Value& answer_json = message_body["answer"];
   ASSERT_TRUE(answer_json.isObject()) << messages[0];
 
   // Constraints and display should be valid with valid constraints.
   ASSERT_FALSE(answer_json["constraints"].isNull());
   ASSERT_FALSE(answer_json["display"].isNull());
 
-  const Json::Value& display_json = answer_json["display"];
+  const json::Value& display_json = answer_json["display"];
   EXPECT_EQ("60", display_json["dimensions"]["frameRate"].asString());
   EXPECT_EQ(640, display_json["dimensions"]["width"].asInt());
   EXPECT_EQ(480, display_json["dimensions"]["height"].asInt());
   EXPECT_EQ("sender", display_json["scaling"].asString());
 
-  const Json::Value& constraints_json = answer_json["constraints"];
+  const json::Value& constraints_json = answer_json["constraints"];
   ASSERT_TRUE(constraints_json.isObject());
 
-  const Json::Value& audio = constraints_json["audio"];
+  const json::Value& audio = constraints_json["audio"];
   ASSERT_TRUE(audio.isObject());
   EXPECT_EQ(32002, audio["maxBitRate"].asInt());
   EXPECT_EQ(2, audio["maxChannels"].asInt());
@@ -921,7 +921,7 @@ TEST_F(ReceiverSessionTest, CanNegotiateWithLimits) {
   EXPECT_EQ(48001, audio["maxSampleRate"].asInt());
   EXPECT_EQ(32001, audio["minBitRate"].asInt());
 
-  const Json::Value& video = constraints_json["video"];
+  const json::Value& video = constraints_json["video"];
   ASSERT_TRUE(video.isObject());
   EXPECT_EQ(90000000, video["maxBitRate"].asInt());
   EXPECT_EQ(1000, video["maxDelay"].asInt());
@@ -941,7 +941,7 @@ TEST_F(ReceiverSessionTest, HandlesNoValidAudioStream) {
   message_port_->ReceiveMessage(kNoAudioOfferMessage);
   const std::vector<std::string>& messages = message_port_->posted_messages();
   EXPECT_EQ(1u, messages.size());
-  Json::Value answer = ExpectIsValidAnswer(messages[0])["answer"];
+  json::Value answer = ExpectIsValidAnswer(messages[0])["answer"];
 
   // Should still select video stream.
   EXPECT_EQ(1u, answer["sendIndexes"].size());
@@ -971,7 +971,7 @@ TEST_F(ReceiverSessionTest, HandlesNoValidVideoStream) {
   message_port_->ReceiveMessage(kNoVideoOfferMessage);
   const std::vector<std::string>& messages = message_port_->posted_messages();
   EXPECT_EQ(1u, messages.size());
-  const Json::Value answer = ExpectIsValidAnswer(messages[0])["answer"];
+  const json::Value answer = ExpectIsValidAnswer(messages[0])["answer"];
 
   // Should still select audio stream.
   EXPECT_EQ(1u, answer["sendIndexes"].size());
@@ -1210,7 +1210,7 @@ TEST_F(ReceiverSessionTest, DelaysAnswerUntilEnvironmentIsReady) {
   ASSERT_EQ(1u, messages.size());
 
   // We should have set the UDP port based on the ready socket value.
-  const Json::Value& message_body = ExpectIsValidAnswer(messages[0]);
+  const json::Value& message_body = ExpectIsValidAnswer(messages[0]);
   EXPECT_EQ(4567, message_body["answer"]["udpPort"].asInt());
 }
 
@@ -1244,7 +1244,7 @@ TEST_F(ReceiverSessionTest, ReturnsErrorCapabilitiesIfRemotingDisabled) {
   ASSERT_EQ(1u, messages.size());
 
   // We should have an error response.
-  ErrorOr<Json::Value> message_body = json::Parse(messages[0]);
+  ErrorOr<json::Value> message_body = json::Parse(messages[0]);
   EXPECT_TRUE(message_body.is_value());
   EXPECT_EQ("CAPABILITIES_RESPONSE", message_body.value()["type"].asString());
   EXPECT_EQ("error", message_body.value()["result"].asString());
@@ -1259,7 +1259,7 @@ TEST_F(ReceiverSessionTest, ReturnsCapabilitiesWithRemotingDefaults) {
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
 
-  const ErrorOr<Json::Value> message_body = json::Parse(messages[0]);
+  const ErrorOr<json::Value> message_body = json::Parse(messages[0]);
   EXPECT_TRUE(message_body.is_value());
   EXPECT_EQ("CAPABILITIES_RESPONSE", message_body.value()["type"].asString());
   EXPECT_EQ("ok", message_body.value()["result"].asString());
@@ -1284,7 +1284,7 @@ TEST_F(ReceiverSessionTest, ReturnsCapabilitiesWithRemotingConstraints) {
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
 
-  const ErrorOr<Json::Value> message_body = json::Parse(messages[0]);
+  const ErrorOr<json::Value> message_body = json::Parse(messages[0]);
   EXPECT_TRUE(message_body.is_value());
   EXPECT_EQ("CAPABILITIES_RESPONSE", message_body.value()["type"].asString());
   EXPECT_EQ("ok", message_body.value()["result"].asString());
@@ -1452,10 +1452,10 @@ TEST_F(ReceiverSessionTest, EnablesDscpInAnswer) {
   message_port_->ReceiveMessage(kValidOfferMessage);
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
-  Json::Value message = ExpectIsValidAnswer(messages[0]);
-  const Json::Value& answer = message["answer"];
+  json::Value message = ExpectIsValidAnswer(messages[0]);
+  const json::Value& answer = message["answer"];
   ASSERT_TRUE(answer.isObject());
-  const Json::Value& dscp = answer["receiverRtcpDscp"];
+  const json::Value& dscp = answer["receiverRtcpDscp"];
   ASSERT_FALSE(dscp.empty());
   EXPECT_EQ(dscp[0], 1337);
   EXPECT_EQ(dscp[1], 31338);
@@ -1472,9 +1472,9 @@ TEST_F(ReceiverSessionTest, EnablesDscpInAnswer) {
   const std::vector<std::string>& messages2 = message_port_->posted_messages();
   ASSERT_EQ(1u, messages2.size());
   message = ExpectIsValidAnswer(messages2[0]);
-  const Json::Value& answer2 = message["answer"];
+  const json::Value& answer2 = message["answer"];
   ASSERT_TRUE(answer2.isObject());
-  const Json::Value& dscp2 = answer2["receiverRtcpDscp"];
+  const json::Value& dscp2 = answer2["receiverRtcpDscp"];
   ASSERT_TRUE(dscp2.empty());
 }
 
@@ -1496,11 +1496,11 @@ TEST_F(ReceiverSessionTest, InputEventsOptIn) {
 
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
-  Json::Value message = ExpectIsValidAnswer(messages[0]);
-  const Json::Value& answer = message["answer"];
-  const Json::Value& extensions = answer["rtpExtensions"];
+  json::Value message = ExpectIsValidAnswer(messages[0]);
+  const json::Value& answer = message["answer"];
+  const json::Value& extensions = answer["rtpExtensions"];
   EXPECT_TRUE(
-      std::ranges::any_of(extensions, [](const Json::Value& stream_extensions) {
+      std::ranges::any_of(extensions, [](const json::Value& stream_extensions) {
         return Contains(stream_extensions, kInputEventsRtpExtension);
       }));
 }
@@ -1579,7 +1579,7 @@ TEST_F(ReceiverSessionTest, HandlesInputMessengerSendsMessage) {
   ExpectIsValidAnswer(messages[0]);
 
   // Index 1 should be INPUT.
-  ErrorOr<Json::Value> input_json = json::Parse(messages[1]);
+  ErrorOr<json::Value> input_json = json::Parse(messages[1]);
   ASSERT_TRUE(input_json.is_value());
   EXPECT_EQ("INPUT", input_json.value()["type"].asString());
   EXPECT_FALSE(input_json.value()["input"].asString().empty());
@@ -1769,11 +1769,11 @@ TEST_F(ReceiverSessionTest, CanNegotiateWithDataChannel) {
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
 
-  Json::Value message = ExpectIsValidAnswer(messages[0]);
+  json::Value message = ExpectIsValidAnswer(messages[0]);
   EXPECT_EQ("ANSWER", message["type"].asString());
   EXPECT_EQ(1337, message["seqNum"].asInt());
 
-  const Json::Value& answer = message["answer"];
+  const json::Value& answer = message["answer"];
   EXPECT_TRUE(answer.isObject());
   EXPECT_FALSE(answer["dataTransport"].isNull());
   EXPECT_TRUE(answer["dataTransport"].isObject());
@@ -1848,7 +1848,7 @@ TEST_F(ReceiverSessionTest, AnswerOmitsDataTransportWhenFingerprintEmpty) {
 
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
-  Json::Value message = ExpectIsValidAnswer(messages[0]);
+  json::Value message = ExpectIsValidAnswer(messages[0]);
   EXPECT_TRUE(message["answer"]["dataTransport"].isNull());
 
   // The unusable server is stopped exactly once and discarded.
@@ -1869,7 +1869,7 @@ TEST_F(ReceiverSessionTest, AnswerOmitsDataTransportWhenServerCreationFails) {
 
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
-  Json::Value message = ExpectIsValidAnswer(messages[0]);
+  json::Value message = ExpectIsValidAnswer(messages[0]);
   EXPECT_TRUE(message["answer"]["dataTransport"].isNull());
 
   EXPECT_CALL(client_,
@@ -2032,7 +2032,7 @@ TEST_F(ReceiverSessionTest, OfferFromOnDataSessionClosedWithErrorIsSafe) {
 
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(2u, messages.size());
-  Json::Value message = ExpectIsValidAnswer(messages[1]);
+  json::Value message = ExpectIsValidAnswer(messages[1]);
   EXPECT_FALSE(message["answer"]["dataTransport"].isNull());
 
   EXPECT_CALL(client_,
@@ -2047,7 +2047,7 @@ TEST_F(ReceiverSessionTest, AnswerOmitsDataTransportWhenDisabled) {
 
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
-  Json::Value message = ExpectIsValidAnswer(messages[0]);
+  json::Value message = ExpectIsValidAnswer(messages[0]);
   EXPECT_TRUE(message["answer"]["dataTransport"].isNull());
 
   EXPECT_CALL(client_,
@@ -2065,7 +2065,7 @@ TEST_F(ReceiverSessionTest, AnswerOmitsDataTransportWhenNotOffered) {
 
   const std::vector<std::string>& messages = message_port_->posted_messages();
   ASSERT_EQ(1u, messages.size());
-  Json::Value message = ExpectIsValidAnswer(messages[0]);
+  json::Value message = ExpectIsValidAnswer(messages[0]);
   EXPECT_TRUE(message["answer"]["dataTransport"].isNull());
   // No server is created for an OFFER without a data transport.
   EXPECT_FALSE(server);

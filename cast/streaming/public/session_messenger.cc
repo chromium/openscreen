@@ -66,7 +66,7 @@ SessionMessenger::~SessionMessenger() {
 
 Error SessionMessenger::SendMessage(const std::string& destination_id,
                                     const std::string& namespace_,
-                                    const Json::Value& message_root) {
+                                    const json::Value& message_root) {
   OSP_CHECK(namespace_ == kCastRemotingNamespace ||
             namespace_ == kCastWebrtcNamespace);
   auto body_or_error = json::Stringify(message_root);
@@ -121,7 +121,7 @@ Error SenderSessionMessenger::SendOutboundMessage(SenderMessage message) {
                               ? kCastRemotingNamespace
                               : kCastWebrtcNamespace;
 
-  ErrorOr<Json::Value> jsonified = message.ToJson();
+  ErrorOr<json::Value> jsonified = message.ToJson();
   OSP_CHECK(jsonified.is_value()) << "Tried to send an invalid message";
   return SessionMessenger::SendMessage(receiver_id_, namespace_,
                                        jsonified.value());
@@ -187,7 +187,7 @@ void SenderSessionMessenger::OnMessage(const std::string& source_id,
     return;
   }
 
-  ErrorOr<Json::Value> message_body = json::Parse(message);
+  ErrorOr<json::Value> message_body = json::Parse(message);
   if (!message_body || !message_body.value().isObject()) {
     ReportError(message_body.error());
     OSP_DLOG_WARN << "Received an invalid message: " << message;
@@ -285,7 +285,7 @@ Error ReceiverSessionMessenger::SendMessage(const std::string& source_id,
                               ? kCastRemotingNamespace
                               : kCastWebrtcNamespace;
 
-  ErrorOr<Json::Value> message_json = message.ToJson();
+  ErrorOr<json::Value> message_json = message.ToJson();
   OSP_CHECK(message_json.is_value()) << "Tried to send an invalid message";
   return SessionMessenger::SendMessage(source_id, namespace_,
                                        message_json.value());
@@ -354,7 +354,7 @@ void ReceiverSessionMessenger::OnMessage(const std::string& source_id,
 
   // If the message is bad JSON, the sender is in a funky state so we
   // report an error.
-  ErrorOr<Json::Value> message_body = json::Parse(message);
+  ErrorOr<json::Value> message_body = json::Parse(message);
   if (message_body.is_error() || !message_body.value().isObject()) {
     ReportError(message_body.error());
     return;

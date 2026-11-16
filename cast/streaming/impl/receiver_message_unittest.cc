@@ -47,12 +47,12 @@ TEST(ReceiverMessageTest, ReceiverErrorToError) {
 }
 
 TEST(ReceiverMessageTest, ErrorOnNonObjectMessage) {
-  Json::Value array_val(Json::arrayValue);
+  json::Value array_val(json::arrayValue);
   EXPECT_TRUE(ReceiverMessage::Parse(array_val).is_error());
   EXPECT_TRUE(ReceiverError::Parse(array_val).is_error());
   EXPECT_TRUE(ReceiverCapability::Parse(array_val).is_error());
 
-  Json::Value string_val("string");
+  json::Value string_val("string");
   EXPECT_TRUE(ReceiverMessage::Parse(string_val).is_error());
   EXPECT_TRUE(ReceiverError::Parse(string_val).is_error());
   EXPECT_TRUE(ReceiverCapability::Parse(string_val).is_error());

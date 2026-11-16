@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "cast/streaming/public/answer_messages.h"
-#include "json/value.h"
+#include "util/json/json_value.h"
 #include "util/osp_logging.h"
 
 namespace openscreen::cast {
@@ -34,8 +34,8 @@ enum class MediaCapability {
 struct ReceiverCapability {
   static constexpr int kRemotingVersionUnknown = -1;
 
-  Json::Value ToJson() const;
-  static ErrorOr<ReceiverCapability> Parse(const Json::Value& value);
+  json::Value ToJson() const;
+  static ErrorOr<ReceiverCapability> Parse(const json::Value& value);
 
   // The remoting version that the receiver uses.
   int remoting_version = kRemotingVersionUnknown;
@@ -57,8 +57,8 @@ struct ReceiverError {
   ReceiverError& operator=(ReceiverError&&);
   ~ReceiverError();
 
-  Json::Value ToJson() const;
-  static ErrorOr<ReceiverError> Parse(const Json::Value& value);
+  json::Value ToJson() const;
+  static ErrorOr<ReceiverError> Parse(const json::Value& value);
   Error ToError() const;
 
   // All Open Screen errors are offset by a fixed value to avoid overlapping
@@ -95,8 +95,8 @@ struct ReceiverMessage {
     kInput,
   };
 
-  static ErrorOr<ReceiverMessage> Parse(const Json::Value& value);
-  ErrorOr<Json::Value> ToJson() const;
+  static ErrorOr<ReceiverMessage> Parse(const json::Value& value);
+  ErrorOr<json::Value> ToJson() const;
 
   Type type = Type::kUnknown;
 

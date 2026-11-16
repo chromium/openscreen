@@ -13,8 +13,8 @@
 #include "cast/streaming/message_fields.h"
 #include "cast/streaming/public/session_config.h"
 #include "cast/streaming/resolution.h"
-#include "json/value.h"
 #include "platform/base/error.h"
+#include "util/json/json_value.h"
 #include "util/simple_fraction.h"
 
 // This file contains the implementation of the Cast V2 Mirroring Control
@@ -43,8 +43,8 @@ inline constexpr int kDefaultNumAudioChannels = 2;
 struct Stream {
   enum class Type : uint8_t { kAudioSource, kVideoSource };
 
-  static ErrorOr<Stream> TryParse(const Json::Value& root, Stream::Type type);
-  Json::Value ToJson() const;
+  static ErrorOr<Stream> TryParse(const json::Value& root, Stream::Type type);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   int index = 0;
@@ -75,8 +75,8 @@ struct Stream {
 };
 
 struct AudioStream {
-  static ErrorOr<AudioStream> TryParse(const Json::Value& root);
-  Json::Value ToJson() const;
+  static ErrorOr<AudioStream> TryParse(const json::Value& root);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   Stream stream;
@@ -85,8 +85,8 @@ struct AudioStream {
 };
 
 struct VideoStream {
-  static ErrorOr<VideoStream> TryParse(const Json::Value& root);
-  Json::Value ToJson() const;
+  static ErrorOr<VideoStream> TryParse(const json::Value& root);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   Stream stream;
@@ -101,16 +101,16 @@ struct VideoStream {
 };
 
 struct DataTransport {
-  static ErrorOr<DataTransport> TryParse(const Json::Value& root);
-  Json::Value ToJson() const;
+  static ErrorOr<DataTransport> TryParse(const json::Value& root);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   DataTransportProtocol protocol;
 };
 
 struct Offer {
-  static ErrorOr<Offer> TryParse(const Json::Value& root);
-  Json::Value ToJson() const;
+  static ErrorOr<Offer> TryParse(const json::Value& root);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   CastMode cast_mode = CastMode::kMirroring;

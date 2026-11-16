@@ -120,13 +120,13 @@ EnumNameTable<AspectRatioConstraint, 2> kAspectRatioConstraintNames{
     {{kScalingReceiver, AspectRatioConstraint::kVariable},
      {kScalingSender, AspectRatioConstraint::kFixed}}};
 
-Json::Value AspectRatioConstraintToJson(AspectRatioConstraint aspect_ratio) {
-  return Json::Value(GetEnumName(kAspectRatioConstraintNames, aspect_ratio)
+json::Value AspectRatioConstraintToJson(AspectRatioConstraint aspect_ratio) {
+  return json::Value(GetEnumName(kAspectRatioConstraintNames, aspect_ratio)
                          .value(kScalingSender));
 }
 
 std::optional<AspectRatioConstraint> TryParseAspectRatioConstraint(
-    const Json::Value& value) {
+    const json::Value& value) {
   std::string aspect_ratio;
   if (!json::TryParseString(value, &aspect_ratio)) {
     return std::nullopt;
@@ -141,7 +141,7 @@ std::optional<AspectRatioConstraint> TryParseAspectRatioConstraint(
 }
 
 template <typename T>
-ErrorOr<std::optional<T>> ParseOptional(const Json::Value& value) {
+ErrorOr<std::optional<T>> ParseOptional(const json::Value& value) {
   if (!value) {
     return std::optional<T>{};
   }
@@ -155,7 +155,7 @@ ErrorOr<std::optional<T>> ParseOptional(const Json::Value& value) {
 }  // namespace
 
 // static
-ErrorOr<AspectRatio> AspectRatio::TryParse(const Json::Value& value) {
+ErrorOr<AspectRatio> AspectRatio::TryParse(const json::Value& value) {
   std::string parsed_value;
   if (!json::TryParseString(value, &parsed_value)) {
     return Error(Error::Code::kJsonParseError, "Invalid aspect ratio string");
@@ -183,7 +183,7 @@ bool AspectRatio::IsValid() const {
 }
 
 // static
-ErrorOr<AudioConstraints> AudioConstraints::TryParse(const Json::Value& root) {
+ErrorOr<AudioConstraints> AudioConstraints::TryParse(const json::Value& root) {
   if (!root.isObject()) {
     return Error(Error::Code::kJsonParseError,
                  "Audio constraints is not a JSON object");
@@ -210,15 +210,15 @@ ErrorOr<AudioConstraints> AudioConstraints::TryParse(const Json::Value& root) {
   return out;
 }
 
-Json::Value AudioConstraints::ToJson() const {
+json::Value AudioConstraints::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value root;
+  json::Value root;
   root[kMaxSampleRate] = max_sample_rate;
   root[kMaxChannels] = max_channels;
   root[kMinBitRate] = min_bit_rate;
   root[kMaxBitRate] = max_bit_rate;
   if (max_delay.has_value()) {
-    root[kMaxDelay] = Json::Value::Int64(max_delay->count());
+    root[kMaxDelay] = json::Value::Int64(max_delay->count());
   }
   return root;
 }
@@ -229,7 +229,7 @@ bool AudioConstraints::IsValid() const {
 }
 
 // static
-ErrorOr<VideoConstraints> VideoConstraints::TryParse(const Json::Value& root) {
+ErrorOr<VideoConstraints> VideoConstraints::TryParse(const json::Value& root) {
   if (!root.isObject()) {
     return Error(Error::Code::kJsonParseError,
                  "Video constraints is not a JSON object");
@@ -282,9 +282,9 @@ bool VideoConstraints::IsValid() const {
          max_dimensions.frame_rate.numerator() > 0;
 }
 
-Json::Value VideoConstraints::ToJson() const {
+json::Value VideoConstraints::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value root;
+  json::Value root;
   root[kMaxDimensions] = max_dimensions.ToJson();
   root[kMinBitRate] = min_bit_rate;
   root[kMaxBitRate] = max_bit_rate;
@@ -297,13 +297,13 @@ Json::Value VideoConstraints::ToJson() const {
   }
 
   if (max_delay.has_value()) {
-    root[kMaxDelay] = Json::Value::Int64(max_delay->count());
+    root[kMaxDelay] = json::Value::Int64(max_delay->count());
   }
   return root;
 }
 
 // static
-ErrorOr<Constraints> Constraints::TryParse(const Json::Value& root) {
+ErrorOr<Constraints> Constraints::TryParse(const json::Value& root) {
   if (!root.isObject()) {
     return Error(Error::Code::kJsonParseError,
                  "Constraints is not a JSON object");
@@ -333,9 +333,9 @@ bool Constraints::IsValid() const {
   return audio.IsValid() && video.IsValid();
 }
 
-Json::Value Constraints::ToJson() const {
+json::Value Constraints::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value root;
+  json::Value root;
   root[kAudio] = audio.ToJson();
   root[kVideo] = video.ToJson();
   return root;
@@ -343,7 +343,7 @@ Json::Value Constraints::ToJson() const {
 
 // static
 ErrorOr<DisplayDescription> DisplayDescription::TryParse(
-    const Json::Value& root) {
+    const json::Value& root) {
   if (!root.isObject()) {
     return Error(Error::Code::kJsonParseError,
                  "Display description is not a JSON object");
@@ -398,9 +398,9 @@ bool DisplayDescription::IsValid() const {
          aspect_ratio_constraint.has_value();
 }
 
-Json::Value DisplayDescription::ToJson() const {
+json::Value DisplayDescription::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value root;
+  json::Value root;
   if (aspect_ratio.has_value()) {
     root[kAspectRatio] =
         std::format("{}{}{}", aspect_ratio->width, kAspectRatioDelimiter,
@@ -417,7 +417,7 @@ Json::Value DisplayDescription::ToJson() const {
 }
 
 ErrorOr<Answer::DataTransportConfig> Answer::DataTransportConfig::TryParse(
-    const Json::Value& value) {
+    const json::Value& value) {
   if (!value.isObject()) {
     return Error(Error::Code::kJsonParseError, "null dataTransport");
   }
@@ -457,16 +457,16 @@ bool Answer::DataTransportConfig::IsValid() const {
          port <= kUdpPortMax && !certificate_fingerprint.empty();
 }
 
-Json::Value Answer::DataTransportConfig::ToJson() const {
+json::Value Answer::DataTransportConfig::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value out;
+  json::Value out;
   out[kProtocol] = GetEnumName(kDataTransportProtocolNames, protocol).value();
   out[kPort] = port;
   out[kCertificateFingerprint] = certificate_fingerprint;
   return out;
 }
 
-ErrorOr<Answer> Answer::TryParse(const Json::Value& root) {
+ErrorOr<Answer> Answer::TryParse(const json::Value& root) {
   if (!root.isObject()) {
     return Error(Error::Code::kJsonParseError, "Answer is not a JSON object");
   }
@@ -538,9 +538,9 @@ bool Answer::IsValid() const {
   return kUdpPortMin <= udp_port && udp_port <= kUdpPortMax;
 }
 
-Json::Value Answer::ToJson() const {
+json::Value Answer::ToJson() const {
   OSP_CHECK(IsValid());
-  Json::Value root;
+  json::Value root;
   if (constraints.has_value()) {
     root[kConstraints] = constraints->ToJson();
   }

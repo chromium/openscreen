@@ -18,8 +18,8 @@
 #include "cast/streaming/public/constants.h"
 #include "cast/streaming/resolution.h"
 #include "cast/streaming/ssrc.h"
-#include "json/value.h"
 #include "platform/base/error.h"
+#include "util/json/json_value.h"
 #include "util/simple_fraction.h"
 
 namespace openscreen::cast {
@@ -36,8 +36,8 @@ namespace openscreen::cast {
 // (3) IsValid. Used by both TryParse and ToJson to ensure that the
 //     object is in a good state.
 struct AudioConstraints {
-  static ErrorOr<AudioConstraints> TryParse(const Json::Value& value);
-  Json::Value ToJson() const;
+  static ErrorOr<AudioConstraints> TryParse(const json::Value& value);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   int max_sample_rate = 0;
@@ -48,8 +48,8 @@ struct AudioConstraints {
 };
 
 struct VideoConstraints {
-  static ErrorOr<VideoConstraints> TryParse(const Json::Value& value);
-  Json::Value ToJson() const;
+  static ErrorOr<VideoConstraints> TryParse(const json::Value& value);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   std::optional<double> max_pixels_per_second = {};
@@ -61,8 +61,8 @@ struct VideoConstraints {
 };
 
 struct Constraints {
-  static ErrorOr<Constraints> TryParse(const Json::Value& value);
-  Json::Value ToJson() const;
+  static ErrorOr<Constraints> TryParse(const json::Value& value);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   AudioConstraints audio;
@@ -75,7 +75,7 @@ struct Constraints {
 enum class AspectRatioConstraint : uint8_t { kVariable = 0, kFixed };
 
 struct AspectRatio {
-  static ErrorOr<AspectRatio> TryParse(const Json::Value& value);
+  static ErrorOr<AspectRatio> TryParse(const json::Value& value);
   bool IsValid() const;
 
   bool operator==(const AspectRatio& other) const {
@@ -87,8 +87,8 @@ struct AspectRatio {
 };
 
 struct DisplayDescription {
-  static ErrorOr<DisplayDescription> TryParse(const Json::Value& value);
-  Json::Value ToJson() const;
+  static ErrorOr<DisplayDescription> TryParse(const json::Value& value);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   // May exceed, be the same, or less than those mentioned in the
@@ -103,8 +103,8 @@ struct Answer {
   // WebTransport), specifying the accepted protocol, port, and certificate
   // fingerprint.
   struct DataTransportConfig {
-    static ErrorOr<DataTransportConfig> TryParse(const Json::Value& value);
-    Json::Value ToJson() const;
+    static ErrorOr<DataTransportConfig> TryParse(const json::Value& value);
+    json::Value ToJson() const;
     bool IsValid() const;
 
     bool operator==(const DataTransportConfig& other) const {
@@ -117,8 +117,8 @@ struct Answer {
     std::string certificate_fingerprint;
   };
 
-  static ErrorOr<Answer> TryParse(const Json::Value& value);
-  Json::Value ToJson() const;
+  static ErrorOr<Answer> TryParse(const json::Value& value);
+  json::Value ToJson() const;
   bool IsValid() const;
 
   int udp_port = 0;

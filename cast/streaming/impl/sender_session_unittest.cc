@@ -377,24 +377,24 @@ class SenderSessionTest : public ::testing::Test {
     if (message_body.is_error()) {
       return {};
     }
-    const Json::Value offer = std::move(message_body.value());
+    const json::Value offer = std::move(message_body.value());
     EXPECT_EQ("OFFER", offer["type"].asString());
     EXPECT_LT(0, offer["seqNum"].asInt());
 
-    const Json::Value& offer_body = offer["offer"];
+    const json::Value& offer_body = offer["offer"];
     if (!offer_body.isObject()) {
       return {};
     }
 
-    const Json::Value& streams = offer_body["supportedStreams"];
+    const json::Value& streams = offer_body["supportedStreams"];
     EXPECT_TRUE(streams.isArray());
     EXPECT_EQ(2u, streams.size());
 
-    const Json::Value& audio_stream = streams[0];
+    const json::Value& audio_stream = streams[0];
     const int audio_index = audio_stream["index"].asInt();
     const int audio_ssrc = audio_stream["ssrc"].asUInt();
 
-    const Json::Value& video_stream = streams[1];
+    const json::Value& video_stream = streams[1];
     const int video_index = video_stream["index"].asInt();
     const int video_ssrc = video_stream["ssrc"].asUInt();
 
@@ -526,7 +526,7 @@ TEST_F(SenderSessionTest, SendsOfferWithZeroBitrateOptions) {
   ASSERT_EQ(1u, messages.size());
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value offer = std::move(message_body.value());
+  const json::Value offer = std::move(message_body.value());
   EXPECT_EQ("OFFER", offer["type"].asString());
 }
 
@@ -540,7 +540,7 @@ TEST_F(SenderSessionTest, SendsOfferWithSimpleVideoOnly) {
   ASSERT_EQ(1u, messages.size());
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value offer = std::move(message_body.value());
+  const json::Value offer = std::move(message_body.value());
   EXPECT_EQ("OFFER", offer["type"].asString());
 }
 
@@ -554,7 +554,7 @@ TEST_F(SenderSessionTest, SendsOfferAudioOnly) {
   ASSERT_EQ(1u, messages.size());
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value offer = std::move(message_body.value());
+  const json::Value offer = std::move(message_body.value());
   EXPECT_EQ("OFFER", offer["type"].asString());
 }
 
@@ -568,20 +568,20 @@ TEST_F(SenderSessionTest, SendsOfferMessage) {
 
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value offer = std::move(message_body.value());
+  const json::Value offer = std::move(message_body.value());
   EXPECT_EQ("OFFER", offer["type"].asString());
   EXPECT_LT(0, offer["seqNum"].asInt());
 
-  const Json::Value& offer_body = offer["offer"];
+  const json::Value& offer_body = offer["offer"];
   ASSERT_FALSE(offer_body.isNull());
   ASSERT_TRUE(offer_body.isObject());
   EXPECT_EQ("mirroring", offer_body["castMode"].asString());
 
-  const Json::Value& streams = offer_body["supportedStreams"];
+  const json::Value& streams = offer_body["supportedStreams"];
   EXPECT_TRUE(streams.isArray());
   EXPECT_EQ(2u, streams.size());
 
-  const Json::Value& audio_stream = streams[0];
+  const json::Value& audio_stream = streams[0];
   EXPECT_EQ("aac", audio_stream["codecName"].asString());
   EXPECT_EQ(0, audio_stream["index"].asInt());
   EXPECT_EQ(32u, audio_stream["aesKey"].asString().length());
@@ -591,7 +591,7 @@ TEST_F(SenderSessionTest, SendsOfferMessage) {
   EXPECT_EQ(127, audio_stream["rtpPayloadType"].asInt());
   EXPECT_EQ("mp4a.40.5", audio_stream["codecParameter"].asString());
 
-  const Json::Value& video_stream = streams[1];
+  const json::Value& video_stream = streams[1];
   EXPECT_EQ("hevc", video_stream["codecName"].asString());
   EXPECT_EQ(1, video_stream["index"].asInt());
   EXPECT_EQ(32u, video_stream["aesKey"].asString().length());
@@ -882,8 +882,8 @@ TEST_F(SenderSessionTest, RemotingNegotiationPopulatesCaptureRecommendations) {
   ASSERT_EQ(1u, messages.size());
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value& offer = message_body.value();
-  const Json::Value& streams = offer["offer"]["supportedStreams"];
+  const json::Value& offer = message_body.value();
+  const json::Value& streams = offer["offer"]["supportedStreams"];
   const int audio_index = streams[0]["index"].asInt();
   const int audio_ssrc = streams[0]["ssrc"].asUInt();
   const int video_index = streams[1]["index"].asInt();
@@ -969,16 +969,16 @@ TEST_F(SenderSessionTest, SendsOfferWithoutDscp) {
 
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value offer = std::move(message_body.value());
-  const Json::Value& offer_body = offer["offer"];
-  const Json::Value& streams = offer_body["supportedStreams"];
+  const json::Value offer = std::move(message_body.value());
+  const json::Value& offer_body = offer["offer"];
+  const json::Value& streams = offer_body["supportedStreams"];
   EXPECT_TRUE(streams.isArray());
   EXPECT_EQ(2u, streams.size());
 
-  const Json::Value& audio_stream = streams[0];
+  const json::Value& audio_stream = streams[0];
   EXPECT_TRUE(audio_stream["receiverRtcpDscp"].isNull());
 
-  const Json::Value& video_stream = streams[1];
+  const json::Value& video_stream = streams[1];
   EXPECT_TRUE(video_stream["receiverRtcpDscp"].isNull());
 }
 
@@ -1009,17 +1009,17 @@ TEST_F(SenderSessionTest, SendsOfferWithDscp) {
 
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value offer = std::move(message_body.value());
-  const Json::Value& offer_body = offer["offer"];
-  const Json::Value& streams = offer_body["supportedStreams"];
+  const json::Value offer = std::move(message_body.value());
+  const json::Value& offer_body = offer["offer"];
+  const json::Value& streams = offer_body["supportedStreams"];
   EXPECT_TRUE(streams.isArray());
   EXPECT_EQ(2u, streams.size());
 
-  const Json::Value& audio_stream = streams[0];
+  const json::Value& audio_stream = streams[0];
   EXPECT_EQ(static_cast<int>(UdpSocket::DscpMode::kAF41),
             audio_stream["receiverRtcpDscp"].asInt());
 
-  const Json::Value& video_stream = streams[1];
+  const json::Value& video_stream = streams[1];
   EXPECT_EQ(static_cast<int>(UdpSocket::DscpMode::kAF41),
             video_stream["receiverRtcpDscp"].asInt());
 }
@@ -1036,7 +1036,7 @@ TEST_F(SenderSessionTest, InputEventsOptIn) {
   ASSERT_EQ(1u, messages.size());
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value& offer = message_body.value()["offer"];
+  const json::Value& offer = message_body.value()["offer"];
 
   // Verify input_events extension is present in the offer.
   bool found_extension = false;
@@ -1103,7 +1103,7 @@ TEST_F(SenderSessionTest, HandlesValidAnswerWithDataChannel) {
   ASSERT_EQ(1u, messages.size());
   auto message_body = json::Parse(messages[0]);
   ASSERT_TRUE(message_body.is_value());
-  const Json::Value& data_transport =
+  const json::Value& data_transport =
       message_body.value()["offer"]["dataTransport"];
   ASSERT_TRUE(data_transport.isObject());
   EXPECT_EQ("webtransport", data_transport["protocol"].asString());

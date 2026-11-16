@@ -28,10 +28,10 @@
 #include "cast/streaming/public/statistics.h"
 #include "cast/streaming/remoting_capabilities.h"
 #include "cast/streaming/sender_packet_router.h"
-#include "json/value.h"
 #include "platform/api/web_transport.h"
 #include "platform/base/ip_address.h"
 #include "util/json/json_serialization.h"
+#include "util/json/json_value.h"
 #include "util/raw_ptr.h"
 #include "util/raw_ref.h"
 

@@ -646,8 +646,8 @@ for message structure and validation:
    `GET_APP_AVAILABILITY`, `RECEIVER_STATUS`, etc.) are handled in
    [`cast/receiver`](../receiver/) and [`cast/sender`](../sender/).
 
-Each message type exposes `static ErrorOr<T> TryParse(const Json::Value&)` and
-`Json::Value ToJson()`. When adding or modifying messages in this specification,
+Each message type exposes `static ErrorOr<T> TryParse(const json::Value&)` and
+`json::Value ToJson()`. When adding or modifying messages in this specification,
 update the corresponding parser and its unit tests concurrently.
 
 ### Discovering Receiver Capabilities
