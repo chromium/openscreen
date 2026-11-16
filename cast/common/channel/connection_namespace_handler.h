@@ -67,13 +67,13 @@ class ConnectionNamespaceHandler : public CastMessageHandler {
  private:
   void HandleConnect(CastSocket* socket,
                      proto::CastMessage message,
-                     Json::Value parsed_message);
+                     json::Value parsed_message);
   void HandleClose(CastSocket* socket,
                    proto::CastMessage message,
-                   Json::Value parsed_message);
+                   json::Value parsed_message);
   void HandleConnectedResponse(CastSocket* socket,
                                proto::CastMessage message,
-                               Json::Value parsed_message);
+                               json::Value parsed_message);
 
   void SendConnect(VirtualConnection virtual_conn);
   void SendClose(VirtualConnection virtual_conn);

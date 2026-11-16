@@ -26,19 +26,19 @@ constexpr std::chrono::seconds kRequestTimeout = std::chrono::seconds(60);
 // a RECEIVER_STATUS message's payload. Receivers confirm a successful
 // STOP by omitting the stopped session from a follow-up RECEIVER_STATUS
 // rather than with a dedicated response type.
-bool IsSessionStillRunning(const Json::Value& message,
+bool IsSessionStillRunning(const json::Value& message,
                            const std::string_view session_id) {
-  const Json::Value* status =
+  const json::Value* status =
       message.find(JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyStatus));
   if (!status || !status->isObject()) {
     return false;
   }
-  const Json::Value* applications =
+  const json::Value* applications =
       status->find(JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyApplications));
   if (!applications || !applications->isArray()) {
     return false;
   }
-  for (const Json::Value& app : *applications) {
+  for (const json::Value& app : *applications) {
     std::optional<std::string_view> id = MaybeGetString(
         app, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeySessionId));
     if (id && id.value() == session_id) {
@@ -50,13 +50,13 @@ bool IsSessionStillRunning(const Json::Value& message,
 
 // Parses the session details from RECEIVER_STATUS's `status` object.
 std::optional<CastPlatformClient::ReceiverStatus> ParseReceiverStatus(
-    const Json::Value& status) {
-  const Json::Value* applications =
+    const json::Value& status) {
+  const json::Value* applications =
       status.find(JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyApplications));
   if (!applications || !applications->isArray() || applications->size() != 1) {
     return std::nullopt;
   }
-  const Json::Value& app = (*applications)[0];
+  const json::Value& app = (*applications)[0];
   std::optional<std::string_view> session_id =
       MaybeGetString(app, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeySessionId));
   std::optional<std::string_view> app_id =
@@ -78,15 +78,15 @@ std::optional<CastPlatformClient::ReceiverStatus> ParseReceiverStatus(
       MaybeGetString(app, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyStatusText))
           .value_or(""));
 
-  const Json::Value* is_idle_screen =
+  const json::Value* is_idle_screen =
       app.find(JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyIsIdleScreen));
   result.is_idle_screen =
       is_idle_screen && is_idle_screen->isBool() && is_idle_screen->asBool();
 
-  const Json::Value* namespaces =
+  const json::Value* namespaces =
       app.find(JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyNamespaces));
   if (namespaces && namespaces->isArray()) {
-    for (const Json::Value& ns : *namespaces) {
+    for (const json::Value& ns : *namespaces) {
       std::optional<std::string_view> name =
           MaybeGetString(ns, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyName));
       if (name) {
@@ -279,7 +279,7 @@ std::optional<int> CastPlatformClient::RequestAppAvailability(
 std::optional<int> CastPlatformClient::LaunchSession(
     std::string_view receiver_id,
     std::string_view app_id,
-    const Json::Value& app_params,
+    const json::Value& app_params,
     LaunchSessionCallback callback) {
   auto virtual_conn = GetPlatformConnection(receiver_id);
   if (!virtual_conn) {
@@ -454,12 +454,12 @@ void CastPlatformClient::OnMessage(VirtualConnectionRouter* router,
       message.source_id() != kPlatformReceiverId) {
     return;
   }
-  ErrorOr<Json::Value> dict_or_error = json::Parse(GetPayload(message));
+  ErrorOr<json::Value> dict_or_error = json::Parse(GetPayload(message));
   if (dict_or_error.is_error() || !dict_or_error.value().isObject()) {
     return;
   }
 
-  Json::Value& dict = dict_or_error.value();
+  json::Value& dict = dict_or_error.value();
   std::optional<int> request_id =
       MaybeGetInt(dict, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyRequestId));
   if (!request_id) {
@@ -481,7 +481,7 @@ void CastPlatformClient::OnMessage(VirtualConnectionRouter* router,
 
 void CastPlatformClient::HandleResponse(std::string_view receiver_id,
                                         int request_id,
-                                        const Json::Value& message) {
+                                        const json::Value& message) {
   auto entry = pending_requests_by_receiver_id_.find(receiver_id);
   if (entry == pending_requests_by_receiver_id_.end()) {
     return;
@@ -499,7 +499,7 @@ void CastPlatformClient::HandleResponse(std::string_view receiver_id,
 bool CastPlatformClient::HandleAppAvailabilityResponse(
     PendingRequests& pending_requests,
     int request_id,
-    const Json::Value& message) {
+    const json::Value& message) {
   auto it = std::ranges::find(pending_requests.availability, request_id,
                               &AvailabilityRequest::request_id);
   if (it == pending_requests.availability.end()) {
@@ -507,7 +507,7 @@ bool CastPlatformClient::HandleAppAvailabilityResponse(
   }
   // TODO(btolsch): Can all of this manual parsing/checking be cleaned up into
   // a single parsing API along with other message handling?
-  const Json::Value* maybe_availability =
+  const json::Value* maybe_availability =
       message.find(JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyAvailability));
   if (maybe_availability && maybe_availability->isObject()) {
     std::optional<std::string_view> result =
@@ -532,7 +532,7 @@ bool CastPlatformClient::HandleAppAvailabilityResponse(
 
 bool CastPlatformClient::HandleLaunchResponse(PendingRequests& pending_requests,
                                               int request_id,
-                                              const Json::Value& message) {
+                                              const json::Value& message) {
   if (!pending_requests.launch_request ||
       pending_requests.launch_request->request_id != request_id) {
     return false;
@@ -562,7 +562,7 @@ bool CastPlatformClient::HandleLaunchResponse(PendingRequests& pending_requests,
         Error(Error::Code::kUnknownError, std::string(error_message)));
     pending_requests.launch_request.reset();
   } else if (HasType(message, CastMessageType::kReceiverStatus)) {
-    const Json::Value* maybe_status =
+    const json::Value* maybe_status =
         message.find(JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyStatus));
     if (maybe_status && maybe_status->isObject()) {
       std::optional<ReceiverStatus> receiver_status =
@@ -582,7 +582,7 @@ bool CastPlatformClient::HandleLaunchResponse(PendingRequests& pending_requests,
 
 bool CastPlatformClient::HandleStopResponse(PendingRequests& pending_requests,
                                             int request_id,
-                                            const Json::Value& message) {
+                                            const json::Value& message) {
   if (!pending_requests.stop_request ||
       pending_requests.stop_request->request_id != request_id) {
     return false;

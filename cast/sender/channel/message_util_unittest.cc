@@ -8,8 +8,8 @@
 
 #include "cast/sender/testing/test_helpers.h"
 #include "gtest/gtest.h"
-#include "json/value.h"
 #include "platform/base/error.h"
+#include "util/json/json_value.h"
 
 namespace openscreen::cast {
 
@@ -60,7 +60,7 @@ TEST(CreateAppAvailabilityRequestTest, InvalidAppIdFails) {
 
 TEST(CreateLaunchRequestTest, ValidAppIdSucceeds) {
   ErrorOr<proto::CastMessage> message =
-      CreateLaunchRequest(kSenderId, 1, kValidAppId, Json::Value());
+      CreateLaunchRequest(kSenderId, 1, kValidAppId, json::Value());
   ASSERT_TRUE(message.is_value());
 
   int request_id;
@@ -71,7 +71,7 @@ TEST(CreateLaunchRequestTest, ValidAppIdSucceeds) {
 
 TEST(CreateLaunchRequestTest, InvalidAppIdFails) {
   ErrorOr<proto::CastMessage> message =
-      CreateLaunchRequest(kSenderId, 1, "short", Json::Value());
+      CreateLaunchRequest(kSenderId, 1, "short", json::Value());
   ASSERT_TRUE(message.is_error());
   EXPECT_EQ(message.error().code(), Error::Code::kParameterInvalid);
 }

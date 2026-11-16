@@ -23,9 +23,9 @@ ErrorOr<CastMessage> CreateAppAvailabilityResponse(
     const std::string& app_id,
     AppAvailabilityResult availability_result) {
   CastMessage availability_response;
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyRequestId] = request_id;
-  Json::Value availability(Json::ValueType::objectValue);
+  json::Value availability(json::ValueType::objectValue);
   availability[app_id.c_str()] =
       availability_result == AppAvailabilityResult::kAvailable
           ? kMessageValueAppAvailable

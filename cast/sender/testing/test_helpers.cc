@@ -40,9 +40,9 @@ void VerifyAppAvailabilityRequest(const CastMessage& message,
   EXPECT_NE(message.source_id(), kPlatformSenderId);
   *sender_id_out = message.source_id();
 
-  ErrorOr<Json::Value> maybe_value = json::Parse(message.payload_utf8());
+  ErrorOr<json::Value> maybe_value = json::Parse(message.payload_utf8());
   ASSERT_TRUE(maybe_value);
-  Json::Value& value = maybe_value.value();
+  json::Value& value = maybe_value.value();
 
   std::optional<std::string_view> maybe_type =
       MaybeGetString(value, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyType));
@@ -55,12 +55,12 @@ void VerifyAppAvailabilityRequest(const CastMessage& message,
   ASSERT_TRUE(maybe_id);
   *request_id_out = maybe_id.value();
 
-  const Json::Value* maybe_app_ids =
+  const json::Value* maybe_app_ids =
       value.find(JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyAppId));
   ASSERT_TRUE(maybe_app_ids);
   ASSERT_TRUE(maybe_app_ids->isArray());
   ASSERT_EQ(maybe_app_ids->size(), 1u);
-  Json::Value app_id_value = maybe_app_ids->get(0u, Json::Value(""));
+  json::Value app_id_value = maybe_app_ids->get(0u, json::Value(""));
   std::optional<std::string_view> maybe_app_id = MaybeGetString(app_id_value);
   ASSERT_TRUE(maybe_app_id);
   *app_id_out =
@@ -98,9 +98,9 @@ void VerifyConnectMessage(const CastMessage& message,
   EXPECT_NE(message.source_id(), kPlatformSenderId);
   *sender_id_out = message.source_id();
 
-  ErrorOr<Json::Value> maybe_value = json::Parse(message.payload_utf8());
+  ErrorOr<json::Value> maybe_value = json::Parse(message.payload_utf8());
   ASSERT_TRUE(maybe_value);
-  Json::Value& value = maybe_value.value();
+  json::Value& value = maybe_value.value();
 
   std::optional<std::string_view> maybe_type =
       MaybeGetString(value, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyType));
@@ -110,7 +110,7 @@ void VerifyConnectMessage(const CastMessage& message,
 }
 
 CastMessage CreateConnectedResponse(const std::string& sender_id) {
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] = kMessageTypeConnected;
   dict[kMessageKeyProtocolVersion] =
       static_cast<int>(proto::CastMessage_ProtocolVersion_CASTV2_1_0);
@@ -135,9 +135,9 @@ void VerifyLaunchRequest(const CastMessage& message,
   EXPECT_NE(message.source_id(), kPlatformSenderId);
   *sender_id_out = message.source_id();
 
-  ErrorOr<Json::Value> maybe_value = json::Parse(message.payload_utf8());
+  ErrorOr<json::Value> maybe_value = json::Parse(message.payload_utf8());
   ASSERT_TRUE(maybe_value);
-  Json::Value& value = maybe_value.value();
+  json::Value& value = maybe_value.value();
 
   std::optional<std::string_view> maybe_type =
       MaybeGetString(value, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyType));
@@ -166,9 +166,9 @@ void VerifyStopRequest(const CastMessage& message,
   EXPECT_NE(message.source_id(), kPlatformSenderId);
   *sender_id_out = message.source_id();
 
-  ErrorOr<Json::Value> maybe_value = json::Parse(message.payload_utf8());
+  ErrorOr<json::Value> maybe_value = json::Parse(message.payload_utf8());
   ASSERT_TRUE(maybe_value);
-  Json::Value& value = maybe_value.value();
+  json::Value& value = maybe_value.value();
 
   std::optional<std::string_view> maybe_type =
       MaybeGetString(value, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyType));
@@ -197,7 +197,7 @@ namespace {
 // id field(s) apply -- callers must not assume `requestId` is always one of
 // them (see CreateLaunchStatusResponse()).
 CastMessage MakeReceiverNamespaceResponse(const std::string& sender_id,
-                                          Json::Value dict) {
+                                          json::Value dict) {
   CastMessage message;
   message.set_source_id(kPlatformReceiverId);
   message.set_destination_id(sender_id);
@@ -215,7 +215,7 @@ CastMessage CreateLaunchStatusResponse(int request_id,
   // A successful launch response echoes the original request id as
   // `launchRequestId`, not `requestId` -- there is no top-level `requestId`
   // field on this particular response.
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] =
       CastMessageTypeToString(CastMessageType::kLaunchStatus);
   dict[kMessageKeyLaunchRequestId] = request_id;
@@ -225,7 +225,7 @@ CastMessage CreateLaunchStatusResponse(int request_id,
 
 CastMessage CreateLaunchPendingUserAuthResponse(int request_id,
                                                 const std::string& sender_id) {
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] =
       CastMessageTypeToString(CastMessageType::kLaunchStatus);
   dict[kMessageKeyLaunchRequestId] = request_id;
@@ -236,7 +236,7 @@ CastMessage CreateLaunchPendingUserAuthResponse(int request_id,
 CastMessage CreateLaunchErrorResponse(int request_id,
                                       const std::string& sender_id,
                                       const std::string& reason) {
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] =
       CastMessageTypeToString(CastMessageType::kLaunchError);
   dict[kMessageKeyRequestId] = request_id;
@@ -248,7 +248,7 @@ CastMessage CreateLaunchExtendedErrorResponse(
     int request_id,
     const std::string& sender_id,
     const std::string& extended_error) {
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] =
       CastMessageTypeToString(CastMessageType::kLaunchError);
   dict[kMessageKeyRequestId] = request_id;
@@ -259,7 +259,7 @@ CastMessage CreateLaunchExtendedErrorResponse(
 CastMessage CreateStopErrorResponse(int request_id,
                                     const std::string& sender_id,
                                     const std::string& reason) {
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] =
       CastMessageTypeToString(CastMessageType::kInvalidRequest);
   dict[kMessageKeyRequestId] = request_id;
@@ -271,16 +271,16 @@ CastMessage CreateReceiverStatusResponse(
     int request_id,
     const std::string& sender_id,
     const std::string& running_session_id) {
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] =
       CastMessageTypeToString(CastMessageType::kReceiverStatus);
   dict[kMessageKeyRequestId] = request_id;
-  Json::Value status(Json::ValueType::objectValue);
-  Json::Value applications(Json::ValueType::arrayValue);
+  json::Value status(json::ValueType::objectValue);
+  json::Value applications(json::ValueType::arrayValue);
   if (!running_session_id.empty()) {
     // Mirrors the fields ApplicationAgent::PopulateReceiverStatus() sends for
     // a running application.
-    Json::Value app(Json::ValueType::objectValue);
+    json::Value app(json::ValueType::objectValue);
     app[kMessageKeySessionId] = running_session_id;
     app[kMessageKeyAppId] = "AAAAAAAA";
     app[kMessageKeyTransportId] = running_session_id + "-transport";

@@ -17,7 +17,6 @@
 #include "cast/receiver/channel/testing/device_auth_test_helpers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "json/writer.h"  // Included to teach gtest how to pretty-print.
 #include "platform/api/time.h"
 #include "platform/base/span.h"
 #include "platform/test/fake_task_runner.h"
@@ -82,7 +81,7 @@ class FakeApplication : public ApplicationAgent::Application,
 
   // These are called at the end of the Launch() and Stop() methods for
   // confirming those methods were called.
-  MOCK_METHOD(void, DidLaunch, (Json::Value params, MessagePort* port), ());
+  MOCK_METHOD(void, DidLaunch, (json::Value params, MessagePort* port), ());
   MOCK_METHOD(void, DidStop, (), ());
 
   // MessagePort::Client overrides.
@@ -100,7 +99,7 @@ class FakeApplication : public ApplicationAgent::Application,
   }
 
   bool Launch(const std::string& app_id,
-              const Json::Value& app_params,
+              const json::Value& app_params,
               MessagePort* message_port) override {
     EXPECT_EQ(GetAppIds().front(), app_id);
     EXPECT_TRUE(message_port);
@@ -173,7 +172,7 @@ class ApplicationAgentTest : public ::testing::Test {
   // Examines the `message` for the correct source/destination transport IDs and
   // namespace, confirms there is JSON in the payload, and returns parsed JSON
   // (or an empty object if the parse fails).
-  static Json::Value ValidateAndParseMessage(const CastMessage& message,
+  static json::Value ValidateAndParseMessage(const CastMessage& message,
                                              const std::string& from,
                                              const std::string& to,
                                              const std::string& the_namespace) {
@@ -182,8 +181,8 @@ class ApplicationAgentTest : public ::testing::Test {
     EXPECT_EQ(the_namespace, message.namespace_());
     EXPECT_EQ(proto::CastMessage_PayloadType_STRING, message.payload_type());
     EXPECT_FALSE(message.payload_utf8().empty());
-    ErrorOr<Json::Value> parsed = json::Parse(message.payload_utf8());
-    return parsed.value(Json::Value(Json::objectValue));
+    ErrorOr<json::Value> parsed = json::Parse(message.payload_utf8());
+    return parsed.value(json::Value(json::objectValue));
   }
 
   // Constructs a CastMessage proto for sending via the CastSocket::Send() API.
@@ -233,7 +232,7 @@ class ApplicationAgentTest : public ::testing::Test {
               }
             }
           })";
-          const Json::Value payload = ValidateAndParseMessage(
+          const json::Value payload = ValidateAndParseMessage(
               message, kPlatformReceiverId, kBroadcastId, kReceiverNamespace);
           EXPECT_EQ(json::Parse(kExpectedJson).value(), payload);
         });
@@ -278,7 +277,7 @@ TEST_F(ApplicationAgentTest, HandlesInvalidCommands) {
           "type":"INVALID_REQUEST",
           "reason":"INVALID_COMMAND"
         })";
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
         EXPECT_EQ(json::Parse(kExpectedJson).value(), payload);
@@ -298,7 +297,7 @@ TEST_F(ApplicationAgentTest, HandlesPings) {
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .Times(kNumPings)
       .WillRepeatedly([&num_pongs](CastSocket*, CastMessage message) {
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kHeartbeatNamespace);
         EXPECT_EQ(json::Parse(R"({"type":"PONG"})").value(), payload);
@@ -362,7 +361,7 @@ TEST_F(ApplicationAgentTest, HandlesGetAppAvailability) {
           "responseType":"GET_APP_AVAILABILITY",
           "availability":{"1A2B3C4D":"APP_UNAVAILABLE"}
         })";
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
         EXPECT_EQ(json::Parse(kExpectedJson).value(), payload);
@@ -387,7 +386,7 @@ TEST_F(ApplicationAgentTest, HandlesGetAppAvailability) {
           "responseType":"GET_APP_AVAILABILITY",
           "availability":{"1A2B3C4D":"APP_AVAILABLE"}
         })";
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
         EXPECT_EQ(json::Parse(kExpectedJson).value(), payload);
@@ -431,7 +430,7 @@ TEST_F(ApplicationAgentTest, HandlesGetStatus) {
             }
           }
         })";
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
         EXPECT_EQ(json::Parse(kExpectedJson).value(), payload);
@@ -452,7 +451,7 @@ TEST_F(ApplicationAgentTest, FailsLaunchRequestWithBadAppID) {
           "type":"LAUNCH_ERROR",
           "reason":"NOT_FOUND"
         })";
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
         EXPECT_EQ(json::Parse(kExpectedJson).value(), payload);
@@ -481,7 +480,7 @@ TEST_F(ApplicationAgentTest, LaunchesApp_PassesMessages_ThenStopsApp) {
   EXPECT_CALL(*idle_app(), DidStop()).InSequence(phase1);
   EXPECT_CALL(some_app, DidLaunch(_, NotNull()))
       .InSequence(phase1)
-      .WillOnce([&](Json::Value params, MessagePort* port) {
+      .WillOnce([&](json::Value params, MessagePort* port) {
         EXPECT_EQ(json::Parse(R"({"a":1,"b":2})").value(), params);
         port_for_app = port;
         port->SetClient(some_app);
@@ -517,7 +516,7 @@ TEST_F(ApplicationAgentTest, LaunchesApp_PassesMessages_ThenStopsApp) {
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .InSequence(phase1)
       .WillOnce([&](CastSocket*, CastMessage message) {
-        const Json::Value payload = ValidateAndParseMessage(
+        const json::Value payload = ValidateAndParseMessage(
             message, kPlatformReceiverId, kBroadcastId, kReceiverNamespace);
         EXPECT_EQ(json::Parse(kRunningAppReceiverStatus).value(), payload);
       });
@@ -530,7 +529,7 @@ TEST_F(ApplicationAgentTest, LaunchesApp_PassesMessages_ThenStopsApp) {
           "launchRequestId":17,
           "status":"USER_ALLOWED"
         })";
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
         EXPECT_EQ(json::Parse(kExpectedJson).value(), payload);
@@ -539,11 +538,11 @@ TEST_F(ApplicationAgentTest, LaunchesApp_PassesMessages_ThenStopsApp) {
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .InSequence(phase1)
       .WillOnce([&](CastSocket*, CastMessage message) {
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
-        ErrorOr<Json::Value> status = json::Parse(kRunningAppReceiverStatus);
-        Json::Value expected = status.value();
+        ErrorOr<json::Value> status = json::Parse(kRunningAppReceiverStatus);
+        json::Value expected = status.value();
         expected["requestId"] = 17;
         EXPECT_EQ(expected, payload);
       });
@@ -589,7 +588,7 @@ TEST_F(ApplicationAgentTest, LaunchesApp_PassesMessages_ThenStopsApp) {
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .InSequence(phase2)
       .WillOnce([&](CastSocket*, CastMessage message) {
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, some_app.GetSessionId(),
                                     kSenderTransportId, kAppNamespace);
         EXPECT_EQ(json::Parse(kReplyMessage).value(), payload);
@@ -639,18 +638,18 @@ TEST_F(ApplicationAgentTest, LaunchesApp_PassesMessages_ThenStopsApp) {
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .InSequence(phase3)
       .WillOnce([&](CastSocket*, CastMessage message) {
-        const Json::Value payload = ValidateAndParseMessage(
+        const json::Value payload = ValidateAndParseMessage(
             message, kPlatformReceiverId, kBroadcastId, kReceiverNamespace);
         EXPECT_EQ(json::Parse(kIdleAppReceiverStatus).value(), payload);
       });
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .InSequence(phase3)
       .WillOnce([&](CastSocket*, CastMessage message) {
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
-        ErrorOr<Json::Value> status = json::Parse(kIdleAppReceiverStatus);
-        Json::Value expected = status.value();
+        ErrorOr<json::Value> status = json::Parse(kIdleAppReceiverStatus);
+        json::Value expected = status.value();
         expected["requestId"] = 18;
         EXPECT_EQ(expected, payload);
       });
@@ -677,7 +676,7 @@ TEST_F(ApplicationAgentTest, AllowsVirtualConnectionsToApp) {
   // of the app.
   EXPECT_CALL(*idle_app(), DidStop());
   EXPECT_CALL(some_app, DidLaunch(_, NotNull()))
-      .WillOnce([&](Json::Value params, MessagePort* port) {
+      .WillOnce([&](json::Value params, MessagePort* port) {
         port->SetClient(some_app);
       });
   std::string transport_id;
@@ -685,7 +684,7 @@ TEST_F(ApplicationAgentTest, AllowsVirtualConnectionsToApp) {
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .InSequence(sequence)
       .WillOnce([&](CastSocket*, CastMessage message) {
-        const Json::Value payload = ValidateAndParseMessage(
+        const json::Value payload = ValidateAndParseMessage(
             message, kPlatformReceiverId, kBroadcastId, kReceiverNamespace);
         if (payload["type"].asString() == "RECEIVER_STATUS") {
           transport_id =
@@ -695,7 +694,7 @@ TEST_F(ApplicationAgentTest, AllowsVirtualConnectionsToApp) {
   EXPECT_CALL(*sender_inbound(), OnMessage(_, _))
       .InSequence(sequence)
       .WillRepeatedly([&](CastSocket*, CastMessage message) {
-        const Json::Value payload =
+        const json::Value payload =
             ValidateAndParseMessage(message, kPlatformReceiverId,
                                     kPlatformSenderId, kReceiverNamespace);
       });

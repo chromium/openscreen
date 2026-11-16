@@ -112,7 +112,7 @@ CastMessage MakeConnectMessage(const std::string& source_id,
   // user agent, application version, etc. are not known here.
   static constexpr char kUnknownVersion[] = "Unknown (Open Screen)";
 
-  Json::Value message(Json::objectValue);
+  json::Value message(json::objectValue);
   message[kMessageKeyType] = CastMessageTypeToString(CastMessageType::kConnect);
   for (int i = 0; i <= 3; ++i) {
     message[kMessageKeyProtocolVersionList][i] =
@@ -121,9 +121,9 @@ CastMessage MakeConnectMessage(const std::string& source_id,
   message[kMessageKeyUserAgent] = kUnknownVersion;
   message[kMessageKeyConnType] =
       static_cast<int>(VirtualConnection::Type::kStrong);
-  message[kMessageKeyOrigin] = Json::Value(Json::objectValue);
+  message[kMessageKeyOrigin] = json::Value(json::objectValue);
 
-  Json::Value sender_info(Json::objectValue);
+  json::Value sender_info(json::objectValue);
   sender_info[kMessageKeySdkType] = kVirtualConnectSdkType;
   sender_info[kMessageKeyVersion] = kUnknownVersion;
   sender_info[kMessageKeyBrowserVersion] = kUnknownVersion;
@@ -151,10 +151,10 @@ std::string MakeUniqueSessionId(const char* prefix) {
   return oss.str();
 }
 
-bool HasType(const Json::Value& object, CastMessageType type) {
+bool HasType(const json::Value& object, CastMessageType type) {
   OSP_CHECK(object.isObject());
-  const Json::Value& value =
-      object.get(kMessageKeyType, Json::Value::nullSingleton());
+  const json::Value& value =
+      object.get(kMessageKeyType, json::Value::nullSingleton());
   return value.isString() && value.asString() == CastMessageTypeToString(type);
 }
 

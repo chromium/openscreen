@@ -132,19 +132,19 @@ void ApplicationAgent::OnMessage(VirtualConnectionRouter* router,
     return;
   }
 
-  const ErrorOr<Json::Value> request = json::Parse(message.payload_utf8());
-  if (request.is_error() || request.value().type() != Json::objectValue) {
+  const ErrorOr<json::Value> request = json::Parse(message.payload_utf8());
+  if (request.is_error() || request.value().type() != json::objectValue) {
     return;
   }
 
-  Json::Value response;
+  json::Value response;
   if (ns == kHeartbeatNamespace) {
     if (HasType(request.value(), CastMessageType::kPing)) {
       response = HandlePing();
     }
   } else if (ns == kReceiverNamespace) {
-    const Json::Value& value =
-        request.value().get(kMessageKeyType, Json::Value::nullSingleton());
+    const json::Value& value =
+        request.value().get(kMessageKeyType, json::Value::nullSingleton());
     if (request.value()[kMessageKeyRequestId].isNull()) {
       response = HandleInvalidCommand(request.value());
     } else if (HasType(request.value(), CastMessageType::kGetAppAvailability)) {
@@ -159,16 +159,16 @@ void ApplicationAgent::OnMessage(VirtualConnectionRouter* router,
       response = HandleInvalidCommand(request.value());
     }
   } else if (ns == kSetupNamespace) {
-    const Json::Value& value =
-        request.value().get(kMessageKeyType, Json::Value::nullSingleton());
+    const json::Value& value =
+        request.value().get(kMessageKeyType, json::Value::nullSingleton());
     if (HasType(request.value(), CastMessageType::kEurekaInfo)) {
       response = HandleEurekaInfo(request.value());
     } else {
       response = HandleInvalidCommand(request.value());
     }
   } else if (ns == kDiscoveryNamespace) {
-    const Json::Value& value =
-        request.value().get(kMessageKeyType, Json::Value::nullSingleton());
+    const json::Value& value =
+        request.value().get(kMessageKeyType, json::Value::nullSingleton());
     if (HasType(request.value(), CastMessageType::kGetDeviceInfo)) {
       response = HandleDeviceInfo(request.value());
     } else {
@@ -222,21 +222,21 @@ void ApplicationAgent::OnError(CastSocket* socket, const Error& error) {
   }
 }
 
-Json::Value ApplicationAgent::HandlePing() {
-  Json::Value response;
+json::Value ApplicationAgent::HandlePing() {
+  json::Value response;
   response[kMessageKeyType] = CastMessageTypeToString(CastMessageType::kPong);
   return response;
 }
 
-Json::Value ApplicationAgent::HandleGetAppAvailability(
-    const Json::Value& request) {
-  Json::Value response;
-  const Json::Value& app_ids = request[kMessageKeyAppId];
+json::Value ApplicationAgent::HandleGetAppAvailability(
+    const json::Value& request) {
+  json::Value response;
+  const json::Value& app_ids = request[kMessageKeyAppId];
   if (app_ids.isArray()) {
     response[kMessageKeyRequestId] = request[kMessageKeyRequestId];
     response[kMessageKeyResponseType] = request[kMessageKeyType];
-    Json::Value& availability = response[kMessageKeyAvailability];
-    for (const Json::Value& app_id : app_ids) {
+    json::Value& availability = response[kMessageKeyAvailability];
+    for (const json::Value& app_id : app_ids) {
       if (app_id.isString()) {
         const auto app_id_str = app_id.asString();
         availability[app_id_str] = registered_applications_.count(app_id_str)
@@ -248,31 +248,31 @@ Json::Value ApplicationAgent::HandleGetAppAvailability(
   return response;
 }
 
-Json::Value ApplicationAgent::HandleGetStatus(const Json::Value& request) {
-  Json::Value response;
+json::Value ApplicationAgent::HandleGetStatus(const json::Value& request) {
+  json::Value response;
   PopulateReceiverStatus(&response);
   response[kMessageKeyRequestId] = request[kMessageKeyRequestId];
   return response;
 }
 
-Json::Value ApplicationAgent::HandleDeviceInfo(const Json::Value& request) {
-  Json::Value response;
+json::Value ApplicationAgent::HandleDeviceInfo(const json::Value& request) {
+  json::Value response;
   PopulateDeviceInfo(&response);
   response[kMessageKeyRequestId] = request[kMessageKeyRequestId];
   return response;
 }
 
-Json::Value ApplicationAgent::HandleEurekaInfo(const Json::Value& request) {
-  Json::Value response;
+json::Value ApplicationAgent::HandleEurekaInfo(const json::Value& request) {
+  json::Value response;
   PopulateEurekaInfo(&response);
   response[kMessageKeyEurekaInfoRequestId] =
       request[kMessageKeyEurekaInfoRequestId];
   return response;
 }
 
-Json::Value ApplicationAgent::HandleLaunch(const Json::Value& request,
+json::Value ApplicationAgent::HandleLaunch(const json::Value& request,
                                            CastSocket* socket) {
-  const Json::Value& app_id = request[kMessageKeyAppId];
+  const json::Value& app_id = request[kMessageKeyAppId];
   Error error;
   if (app_id.isString() && !app_id.asString().empty()) {
     error = SwitchToApplication(app_id.asString(),
@@ -280,7 +280,7 @@ Json::Value ApplicationAgent::HandleLaunch(const Json::Value& request,
   } else {
     error = Error(Error::Code::kParameterInvalid, kMessageValueBadParameter);
   }
-  Json::Value response;
+  json::Value response;
   if (!error.ok()) {
     response[kMessageKeyRequestId] = request[kMessageKeyRequestId];
     response[kMessageKeyType] =
@@ -295,8 +295,8 @@ Json::Value ApplicationAgent::HandleLaunch(const Json::Value& request,
   return response;
 }
 
-Json::Value ApplicationAgent::HandleStop(const Json::Value& request) {
-  const Json::Value& session_id = request[kMessageKeySessionId];
+json::Value ApplicationAgent::HandleStop(const json::Value& request) {
+  const json::Value& session_id = request[kMessageKeySessionId];
   const bool has_session_id = !session_id.isNull();
   const bool is_already_launched =
       has_session_id && session_id.isString() && launched_app_ &&
@@ -306,7 +306,7 @@ Json::Value ApplicationAgent::HandleStop(const Json::Value& request) {
     return HandleGetStatus(request);
   }
 
-  Json::Value response;
+  json::Value response;
   response[kMessageKeyRequestId] = request[kMessageKeyRequestId];
   response[kMessageKeyType] =
       CastMessageTypeToString(CastMessageType::kInvalidRequest);
@@ -314,8 +314,8 @@ Json::Value ApplicationAgent::HandleStop(const Json::Value& request) {
   return response;
 }
 
-Json::Value ApplicationAgent::HandleInvalidCommand(const Json::Value& request) {
-  Json::Value response;
+json::Value ApplicationAgent::HandleInvalidCommand(const json::Value& request) {
+  json::Value response;
   if (request[kMessageKeyRequestId].isNull()) {
     return response;
   }
@@ -327,7 +327,7 @@ Json::Value ApplicationAgent::HandleInvalidCommand(const Json::Value& request) {
 }
 
 Error ApplicationAgent::SwitchToApplication(std::string app_id,
-                                            const Json::Value& app_params,
+                                            const json::Value& app_params,
                                             CastSocket* socket) {
   Error error = Error::Code::kNone;
   Application* desired_app = nullptr;
@@ -389,14 +389,14 @@ void ApplicationAgent::GoIdle() {
   SwitchToApplication(app_id, {}, nullptr);
 }
 
-void ApplicationAgent::PopulateReceiverStatus(Json::Value* out) {
-  Json::Value& message = *out;
+void ApplicationAgent::PopulateReceiverStatus(json::Value* out) {
+  json::Value& message = *out;
   message[kMessageKeyType] =
       CastMessageTypeToString(CastMessageType::kReceiverStatus);
-  Json::Value& status = message[kMessageKeyStatus];
+  json::Value& status = message[kMessageKeyStatus];
 
   if (launched_app_) {
-    Json::Value& details = status[kMessageKeyApplications][0];
+    json::Value& details = status[kMessageKeyApplications][0];
     // If the Application can send/receive messages, the destination for such
     // messages is provided here, in `transportId`. However, the other end must
     // first set up the virtual connection by issuing a CONNECT request.
@@ -413,17 +413,17 @@ void ApplicationAgent::PopulateReceiverStatus(Json::Value* out) {
     details[kMessageKeyLaunchedFromCloud] = false;
     std::vector<std::string> app_namespaces =
         launched_app_->GetSupportedNamespaces();
-    Json::Value& namespaces =
-        (details[kMessageKeyNamespaces] = Json::Value(Json::arrayValue));
+    json::Value& namespaces =
+        (details[kMessageKeyNamespaces] = json::Value(json::arrayValue));
     for (int i = 0, count = app_namespaces.size(); i < count; ++i) {
       namespaces[i][kMessageKeyName] = std::move(app_namespaces[i]);
     }
   }
 
-  status[kMessageKeyUserEq] = Json::Value(Json::objectValue);
+  status[kMessageKeyUserEq] = json::Value(json::objectValue);
 
   // Indicate a fixed 100% volume level.
-  Json::Value& volume = status[kMessageKeyVolume];
+  json::Value& volume = status[kMessageKeyVolume];
   volume[kMessageKeyControlType] = kMessageValueAttenuation;
   volume[kMessageKeyLevel] = 1.0;
   volume[kMessageKeyMuted] = false;
@@ -431,9 +431,9 @@ void ApplicationAgent::PopulateReceiverStatus(Json::Value* out) {
 }
 
 void ApplicationAgent::BroadcastReceiverStatus() {
-  Json::Value message;
+  json::Value message;
   PopulateReceiverStatus(&message);
-  message[kMessageKeyRequestId] = Json::Value(0);  // Indicates no requestor.
+  message[kMessageKeyRequestId] = json::Value(0);  // Indicates no requestor.
   router_.BroadcastFromLocalPeer(
       kPlatformReceiverId,
       MakeSimpleUTF8Message(kReceiverNamespace,
@@ -444,8 +444,8 @@ void ApplicationAgent::SetReceiverInfo(ReceiverInfo receiver_info) {
   receiver_info_ = receiver_info;
 }
 
-void ApplicationAgent::PopulateDeviceInfo(Json::Value* out) {
-  Json::Value& message = *out;
+void ApplicationAgent::PopulateDeviceInfo(json::Value* out) {
+  json::Value& message = *out;
 
   message[kMessageKeyControlNotifications] = 1;
   message[kMessageKeyDeviceCapabilities] = kDefaultDeviceCapabilities;
@@ -456,19 +456,19 @@ void ApplicationAgent::PopulateDeviceInfo(Json::Value* out) {
       CastMessageTypeToString(CastMessageType::kGetDeviceInfo);
 }
 
-void ApplicationAgent::PopulateEurekaInfo(Json::Value* out) {
-  Json::Value& message = *out;
+void ApplicationAgent::PopulateEurekaInfo(json::Value* out) {
+  json::Value& message = *out;
 
-  Json::Value& data = message[kMessageKeyData];
+  json::Value& data = message[kMessageKeyData];
   data[kMessageKeyVersion] = 12;
   data[kMessageKeyName] = receiver_info_.friendly_name;
 
-  Json::Value& device_info = data[kMessageKeyDeviceInfo];
+  json::Value& device_info = data[kMessageKeyDeviceInfo];
   device_info[kMessageKeyManufacturer] = "google";
   device_info[kMessageKeyProductName] = receiver_info_.model_name;
   device_info[kMessageKeySsdpUdn] = receiver_info_.GetInstanceId();
 
-  Json::Value& build_info = data[kMessageKeyBuildInfo];
+  json::Value& build_info = data[kMessageKeyBuildInfo];
   build_info[kMessageKeyBuildType] = 2;
   build_info[kMessageKeyCastBuildRevision] = "1.0";
   build_info[kMessageKeySystemBuildNumber] = "BUILD_NUMBER";

@@ -29,7 +29,7 @@
 #include "util/alarm.h"
 #include "util/scoped_wake_lock.h"
 
-namespace Json {
+namespace openscreen::json {
 class Value;
 }
 
@@ -153,7 +153,7 @@ class LoopingFileCastAgent final
   // Called by OnMessage() to determine whether the Cast Receiver has launched
   // or unlaunched the Mirroring App. If the former, a VirtualConnection is
   // requested. Otherwise, the workflow is aborted and Shutdown() is called.
-  void HandleReceiverStatus(const Json::Value& status);
+  void HandleReceiverStatus(const json::Value& status);
 
   // Called by the `connection_handler_` after message routing to the Cast
   // Receiver's Mirroring App has been established (if `success` is true).

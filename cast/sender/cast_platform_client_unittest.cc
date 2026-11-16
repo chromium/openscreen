@@ -104,7 +104,7 @@ class CastPlatformClientTest : public ::testing::Test {
       std::string_view receiver_id,
       std::string_view app_id,
       CastPlatformClient::LaunchSessionCallback callback) {
-    return platform_client_.LaunchSession(receiver_id, app_id, Json::Value(),
+    return platform_client_.LaunchSession(receiver_id, app_id, json::Value(),
                                           std::move(callback));
   }
 

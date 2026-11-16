@@ -26,7 +26,7 @@ bool IsValidAppId(std::string_view app_id) {
 }
 
 ErrorOr<CastMessage> CreateReceiverMessage(std::string_view sender_id,
-                                           const Json::Value& dict) {
+                                           const json::Value& dict) {
   CastMessage message;
   message.set_payload_type(proto::CastMessage_PayloadType_STRING);
   ErrorOr<std::string> serialized = json::Stringify(dict);
@@ -71,13 +71,13 @@ ErrorOr<CastMessage> CreateAppAvailabilityRequest(std::string_view sender_id,
     return Error(Error::Code::kParameterInvalid, "Invalid app ID");
   }
 
-  Json::Value dict(Json::ValueType::objectValue);
-  dict[kMessageKeyType] = Json::Value(
+  json::Value dict(json::ValueType::objectValue);
+  dict[kMessageKeyType] = json::Value(
       CastMessageTypeToString(CastMessageType::kGetAppAvailability));
-  Json::Value app_id_value(Json::ValueType::arrayValue);
-  app_id_value.append(Json::Value(app_id));
+  json::Value app_id_value(json::ValueType::arrayValue);
+  app_id_value.append(json::Value(app_id));
   dict[kMessageKeyAppId] = std::move(app_id_value);
-  dict[kMessageKeyRequestId] = Json::Value(request_id);
+  dict[kMessageKeyRequestId] = json::Value(request_id);
 
   return CreateReceiverMessage(sender_id, dict);
 }
@@ -85,16 +85,16 @@ ErrorOr<CastMessage> CreateAppAvailabilityRequest(std::string_view sender_id,
 ErrorOr<CastMessage> CreateLaunchRequest(std::string_view sender_id,
                                          int request_id,
                                          std::string_view app_id,
-                                         Json::Value app_params) {
+                                         json::Value app_params) {
   if (!IsValidAppId(app_id)) {
     return Error(Error::Code::kParameterInvalid, "Invalid app ID");
   }
 
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] =
-      Json::Value(CastMessageTypeToString(CastMessageType::kLaunch));
-  dict[kMessageKeyAppId] = Json::Value(app_id);
-  dict[kMessageKeyRequestId] = Json::Value(request_id);
+      json::Value(CastMessageTypeToString(CastMessageType::kLaunch));
+  dict[kMessageKeyAppId] = json::Value(app_id);
+  dict[kMessageKeyRequestId] = json::Value(request_id);
   if (!app_params.isNull()) {
     dict[kMessageKeyAppParams] = std::move(app_params);
   }
@@ -105,11 +105,11 @@ ErrorOr<CastMessage> CreateLaunchRequest(std::string_view sender_id,
 ErrorOr<CastMessage> CreateStopRequest(std::string_view sender_id,
                                        int request_id,
                                        std::string_view session_id) {
-  Json::Value dict(Json::ValueType::objectValue);
+  json::Value dict(json::ValueType::objectValue);
   dict[kMessageKeyType] =
-      Json::Value(CastMessageTypeToString(CastMessageType::kStop));
-  dict[kMessageKeySessionId] = Json::Value(session_id);
-  dict[kMessageKeyRequestId] = Json::Value(request_id);
+      json::Value(CastMessageTypeToString(CastMessageType::kStop));
+  dict[kMessageKeySessionId] = json::Value(session_id);
+  dict[kMessageKeyRequestId] = json::Value(request_id);
 
   return CreateReceiverMessage(sender_id, dict);
 }

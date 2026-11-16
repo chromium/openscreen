@@ -44,7 +44,7 @@ class MirroringApplication final : public ApplicationAgent::Application,
   // ApplicationAgent::Application overrides.
   const std::vector<std::string>& GetAppIds() const final;
   bool Launch(const std::string& app_id,
-              const Json::Value& app_params,
+              const json::Value& app_params,
               MessagePort* message_port) final;
   std::string GetSessionId() final;
   std::string GetDisplayName() final;

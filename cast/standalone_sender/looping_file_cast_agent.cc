@@ -18,9 +18,9 @@
 #include "cast/streaming/public/constants.h"
 #include "cast/streaming/public/offer_messages.h"
 #include "cast/streaming/resolution.h"
-#include "json/value.h"
 #include "platform/api/tls_connection_factory.h"
 #include "util/json/json_helpers.h"
+#include "util/json/json_value.h"
 #include "util/trace_logging.h"
 
 namespace openscreen::cast {
@@ -167,7 +167,7 @@ void LoopingFileCastAgent::OnMessage(VirtualConnectionRouter* router,
       OSP_DLOG_WARN << ": received an unsupported BINARY type message.";
     }
 
-    const ErrorOr<Json::Value> payload = json::Parse(GetPayload(message));
+    const ErrorOr<json::Value> payload = json::Parse(GetPayload(message));
     if (payload.is_error()) {
       OSP_LOG_ERROR << "Failed to parse message: " << payload.error();
       return;
@@ -206,12 +206,12 @@ const char* LoopingFileCastAgent::GetStreamingAppId() const {
              : GetCastStreamingAudioVideoAppId();
 }
 
-void LoopingFileCastAgent::HandleReceiverStatus(const Json::Value& status) {
-  const Json::Value& details =
+void LoopingFileCastAgent::HandleReceiverStatus(const json::Value& status) {
+  const json::Value& details =
       (status[kMessageKeyStatus].isObject() &&
        status[kMessageKeyStatus][kMessageKeyApplications].isArray())
           ? status[kMessageKeyStatus][kMessageKeyApplications][0]
-          : Json::Value();
+          : json::Value();
 
   std::string running_app_id;
   if (!json::TryParseString(details[kMessageKeyAppId], &running_app_id) ||

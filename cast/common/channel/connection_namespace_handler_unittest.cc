@@ -49,13 +49,13 @@ CastMessage MakeVersionedConnectMessage(
     std::optional<CastMessage_ProtocolVersion> version,
     std::vector<CastMessage_ProtocolVersion> version_list) {
   CastMessage connect_message = MakeConnectMessage(source_id, destination_id);
-  Json::Value message(Json::ValueType::objectValue);
+  json::Value message(json::ValueType::objectValue);
   message[kMessageKeyType] = kMessageTypeConnect;
   if (version) {
     message[kMessageKeyProtocolVersion] = version.value();
   }
   if (!version_list.empty()) {
-    Json::Value list(Json::ValueType::arrayValue);
+    json::Value list(json::ValueType::arrayValue);
     for (CastMessage_ProtocolVersion v : version_list) {
       list.append(v);
     }
@@ -76,8 +76,8 @@ void VerifyConnectionMessage(const CastMessage& message,
   ASSERT_EQ(message.payload_type(), proto::CastMessage_PayloadType_STRING);
 }
 
-Json::Value ParseConnectionMessage(const CastMessage& message) {
-  ErrorOr<Json::Value> result = json::Parse(message.payload_utf8());
+json::Value ParseConnectionMessage(const CastMessage& message) {
+  ErrorOr<json::Value> result = json::Parse(message.payload_utf8());
   OSP_CHECK(result) << message.payload_utf8();
   return result.value();
 }
@@ -104,7 +104,7 @@ class ConnectionNamespaceHandlerTest : public ::testing::Test {
         .WillOnce([&source_id, &destination_id](CastSocket* socket,
                                                 CastMessage message) {
           VerifyConnectionMessage(message, source_id, destination_id);
-          Json::Value value = ParseConnectionMessage(message);
+          json::Value value = ParseConnectionMessage(message);
           std::optional<std::string_view> type = MaybeGetString(
               value, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyType));
           ASSERT_TRUE(type) << message.payload_utf8();
@@ -121,7 +121,7 @@ class ConnectionNamespaceHandlerTest : public ::testing::Test {
         .WillOnce([&source_id, &destination_id, version](CastSocket* socket,
                                                          CastMessage message) {
           VerifyConnectionMessage(message, source_id, destination_id);
-          Json::Value value = ParseConnectionMessage(message);
+          json::Value value = ParseConnectionMessage(message);
           std::optional<std::string_view> type = MaybeGetString(
               value, JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyType));
           ASSERT_TRUE(type) << message.payload_utf8();

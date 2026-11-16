@@ -31,9 +31,9 @@ bool IsValidProtocolVersion(int version) {
   return proto::CastMessage_ProtocolVersion_IsValid(version);
 }
 
-std::optional<int> FindMaxProtocolVersion(const Json::Value* version,
-                                          const Json::Value* version_list) {
-  using ArrayIndex = Json::Value::ArrayIndex;
+std::optional<int> FindMaxProtocolVersion(const json::Value* version,
+                                          const json::Value* version_list) {
+  using ArrayIndex = json::Value::ArrayIndex;
   static_assert(std::is_integral<ArrayIndex>::value,
                 "Assuming ArrayIndex is integral");
   std::optional<int> max_version;
@@ -64,7 +64,7 @@ std::optional<int> FindMaxProtocolVersion(const Json::Value* version,
 }
 
 VirtualConnection::CloseReason GetCloseReason(
-    const Json::Value& parsed_message) {
+    const json::Value& parsed_message) {
   VirtualConnection::CloseReason reason =
       VirtualConnection::CloseReason::kClosedByPeer;
   std::optional<int> reason_code = MaybeGetInt(
@@ -125,12 +125,12 @@ void ConnectionNamespaceHandler::OnMessage(VirtualConnectionRouter* router,
     return;
   }
 
-  ErrorOr<Json::Value> result = json::Parse(GetPayload(message));
+  ErrorOr<json::Value> result = json::Parse(GetPayload(message));
   if (result.is_error()) {
     return;
   }
 
-  Json::Value& value = result.value();
+  json::Value& value = result.value();
   if (!value.isObject()) {
     return;
   }
@@ -160,7 +160,7 @@ void ConnectionNamespaceHandler::OnMessage(VirtualConnectionRouter* router,
 
 void ConnectionNamespaceHandler::HandleConnect(CastSocket* socket,
                                                CastMessage message,
-                                               Json::Value parsed_message) {
+                                               json::Value parsed_message) {
   if (message.destination_id() == kBroadcastId ||
       message.source_id() == kBroadcastId) {
     return;
@@ -197,16 +197,16 @@ void ConnectionNamespaceHandler::HandleConnect(CastSocket* socket,
     data.user_agent = std::string(user_agent.value());
   }
 
-  const Json::Value* sender_info_value = parsed_message.find(
+  const json::Value* sender_info_value = parsed_message.find(
       JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeySenderInfo));
   if (!sender_info_value || !sender_info_value->isObject()) {
     // TODO(btolsch): Should this be guessed from user agent?
     OSP_VLOG << "No sender info from protocol.";
   }
 
-  const Json::Value* version_value = parsed_message.find(
+  const json::Value* version_value = parsed_message.find(
       JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyProtocolVersion));
-  const Json::Value* version_list_value = parsed_message.find(
+  const json::Value* version_list_value = parsed_message.find(
       JSON_EXPAND_FIND_CONSTANT_ARGS(kMessageKeyProtocolVersionList));
   std::optional<int> negotiated_version =
       FindMaxProtocolVersion(version_value, version_list_value);
@@ -238,7 +238,7 @@ void ConnectionNamespaceHandler::HandleConnect(CastSocket* socket,
 
 void ConnectionNamespaceHandler::HandleClose(CastSocket* socket,
                                              CastMessage message,
-                                             Json::Value parsed_message) {
+                                             json::Value parsed_message) {
   const VirtualConnection conn{std::move(*message.mutable_destination_id()),
                                std::move(*message.mutable_source_id()),
                                ToCastSocketId(socket)};
@@ -253,7 +253,7 @@ void ConnectionNamespaceHandler::HandleClose(CastSocket* socket,
 void ConnectionNamespaceHandler::HandleConnectedResponse(
     CastSocket* socket,
     CastMessage message,
-    Json::Value parsed_message) {
+    json::Value parsed_message) {
   const VirtualConnection conn{std::move(message.destination_id()),
                                std::move(message.source_id()),
                                ToCastSocketId(socket)};
@@ -291,7 +291,7 @@ void ConnectionNamespaceHandler::SendClose(VirtualConnection virtual_conn) {
 void ConnectionNamespaceHandler::SendConnectedResponse(
     const VirtualConnection& virtual_conn,
     int max_protocol_version) {
-  Json::Value connected_message(Json::ValueType::objectValue);
+  json::Value connected_message(json::ValueType::objectValue);
   connected_message[kMessageKeyType] = kMessageTypeConnected;
   connected_message[kMessageKeyProtocolVersion] =
       static_cast<int>(max_protocol_version);

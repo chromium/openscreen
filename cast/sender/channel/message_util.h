@@ -11,7 +11,7 @@
 #include "cast/common/channel/proto/cast_channel.pb.h"
 #include "platform/base/error.h"
 
-namespace Json {
+namespace openscreen::json {
 class Value;
 }
 
@@ -38,7 +38,7 @@ ErrorOr<proto::CastMessage> CreateAppAvailabilityRequest(
 ErrorOr<proto::CastMessage> CreateLaunchRequest(std::string_view sender_id,
                                                 int request_id,
                                                 std::string_view app_id,
-                                                Json::Value app_params);
+                                                json::Value app_params);
 
 // `request_id` must be unique for `sender_id`.
 ErrorOr<proto::CastMessage> CreateStopRequest(std::string_view sender_id,

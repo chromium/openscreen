@@ -49,7 +49,7 @@ const std::vector<std::string>& MirroringApplication::GetAppIds() const {
 }
 
 bool MirroringApplication::Launch(const std::string& app_id,
-                                  const Json::Value& app_params,
+                                  const json::Value& app_params,
                                   MessagePort* message_port) {
   if (!IsCastStreamingAppId(app_id) || !message_port || current_session_) {
     return false;

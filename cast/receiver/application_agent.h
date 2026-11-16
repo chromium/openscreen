@@ -66,7 +66,7 @@ class ApplicationAgent final
     // the provided `message_port` and must call MessagePort::SetClient() before
     // any flow will occur.
     virtual bool Launch(const std::string& app_id,
-                        const Json::Value& app_params,
+                        const json::Value& app_params,
                         MessagePort* message_port) = 0;
 
     // These reflect the current state of the application, and the data is used
@@ -129,14 +129,14 @@ class ApplicationAgent final
   // OnMessage() delegates to these to take action for each `request`. Each of
   // these returns a non-empty response message if a reply should be sent back
   // to the requestor.
-  Json::Value HandlePing();
-  Json::Value HandleGetAppAvailability(const Json::Value& request);
-  Json::Value HandleGetStatus(const Json::Value& request);
-  Json::Value HandleDeviceInfo(const Json::Value& request);
-  Json::Value HandleEurekaInfo(const Json::Value& request);
-  Json::Value HandleLaunch(const Json::Value& request, CastSocket* socket);
-  Json::Value HandleStop(const Json::Value& request);
-  Json::Value HandleInvalidCommand(const Json::Value& request);
+  json::Value HandlePing();
+  json::Value HandleGetAppAvailability(const json::Value& request);
+  json::Value HandleGetStatus(const json::Value& request);
+  json::Value HandleDeviceInfo(const json::Value& request);
+  json::Value HandleEurekaInfo(const json::Value& request);
+  json::Value HandleLaunch(const json::Value& request, CastSocket* socket);
+  json::Value HandleStop(const json::Value& request);
+  json::Value HandleInvalidCommand(const json::Value& request);
 
   // Stops the currently-running Application and attempts to launch the
   // Application referred to by `app_id`. If this fails, the "idle screen"
@@ -144,7 +144,7 @@ class ApplicationAgent final
   // is non-null only when the application switch was caused by a remote LAUNCH
   // request.
   Error SwitchToApplication(std::string app_id,
-                            const Json::Value& app_params,
+                            const json::Value& app_params,
                             CastSocket* socket);
 
   // Stops the currently-running Application and launches the "idle screen."
@@ -153,17 +153,17 @@ class ApplicationAgent final
   // Populates the given `out` object with the RECEIVER_STATUS fields,
   // reflecting the currently-launched app (if any), and a fake volume level
   // status.
-  void PopulateReceiverStatus(Json::Value* out);
+  void PopulateReceiverStatus(json::Value* out);
 
   // Populates the given `out` object with the DEVICE_INFO fields,
   // reflecting the currently-launched app (if any), and a fake volume level
   // status.
-  void PopulateDeviceInfo(Json::Value* out);
+  void PopulateDeviceInfo(json::Value* out);
 
   // Populates the given `out` object with the eureka_info fields,
   // reflecting the currently-launched app (if any), and a fake volume level
   // status.
-  void PopulateEurekaInfo(Json::Value* out);
+  void PopulateEurekaInfo(json::Value* out);
 
   // Broadcasts new RECEIVER_STATUS to all endpoints. This is called after an
   // Application LAUNCH or STOP.

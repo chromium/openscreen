@@ -10,7 +10,7 @@
 
 #include "cast/common/channel/proto/cast_channel.pb.h"
 
-namespace Json {
+namespace openscreen::json {
 class Value;
 }
 
@@ -248,7 +248,7 @@ proto::CastMessage MakeCloseMessage(const std::string& source_id,
 std::string MakeUniqueSessionId(const char* prefix);
 
 // Returns true if the type field in `object` is set to the given `type`.
-bool HasType(const Json::Value& object, CastMessageType type);
+bool HasType(const json::Value& object, CastMessageType type);
 
 // Serializes a given cast message to a string.
 std::string ToString(const proto::CastMessage& message);

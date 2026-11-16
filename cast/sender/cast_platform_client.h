@@ -116,7 +116,7 @@ class CastPlatformClient final : public CastMessageHandler {
   // still waiting to connect -- which may be passed to CancelRequest().
   std::optional<int> LaunchSession(std::string_view receiver_id,
                                    std::string_view app_id,
-                                   const Json::Value& app_params,
+                                   const json::Value& app_params,
                                    LaunchSessionCallback callback);
 
   // Requests that the receiver identified by `receiver_id` stop the session
@@ -196,7 +196,7 @@ class CastPlatformClient final : public CastMessageHandler {
 
   void HandleResponse(std::string_view receiver_id,
                       int request_id,
-                      const Json::Value& message);
+                      const json::Value& message);
 
   // Invokes and clears every callback queued in
   // `pending_connects_by_receiver_id_` for `receiver_id`, if any. Safe to
@@ -208,13 +208,13 @@ class CastPlatformClient final : public CastMessageHandler {
   // HandleResponse() can try the next kind.
   bool HandleAppAvailabilityResponse(PendingRequests& pending_requests,
                                      int request_id,
-                                     const Json::Value& message);
+                                     const json::Value& message);
   bool HandleLaunchResponse(PendingRequests& pending_requests,
                             int request_id,
-                            const Json::Value& message);
+                            const json::Value& message);
   bool HandleStopResponse(PendingRequests& pending_requests,
                           int request_id,
-                          const Json::Value& message);
+                          const json::Value& message);
 
   void CancelAppAvailabilityRequest(int request_id);
 
