@@ -4,6 +4,8 @@
 
 #include "cast/common/certificate/date_time.h"
 
+#include <time.h>
+
 #include "util/osp_logging.h"
 
 namespace openscreen::cast {

@@ -5,6 +5,8 @@
 #ifndef CAST_COMMON_PUBLIC_PARSED_CERTIFICATE_H_
 #define CAST_COMMON_PUBLIC_PARSED_CERTIFICATE_H_
 
+#include <time.h>
+
 #include <cstdint>
 #include <memory>
 #include <string>
