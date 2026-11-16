@@ -4,6 +4,9 @@
 
 #include "platform/impl/task_runner.h"
 
+#include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <csignal>
 #include <thread>
 
@@ -13,20 +16,21 @@ namespace openscreen {
 
 namespace {
 
-// This is mutated by the signal handler installed by RunUntilSignaled(), and is
-// checked by RunUntilStopped().
-//
-// Per the C++14 spec, passing visible changes to memory between a signal
-// handler and a program thread must be done through a volatile variable.
-volatile enum {
-  kNotRunning,
-  kNotSignaled,
-  kSignaled
-} g_signal_state = kNotRunning;
+enum class SignalState { kNotRunning, kNotSignaled, kSignaled };
+
+// This is set by the signal handler installed by RunUntilSignaled(), and is
+// checked by RunUntilStopped(). The handler may run on any thread, so this is
+// an atomic. Lock-free atomics are safe to use in signal handlers.
+std::atomic<SignalState> g_signal_state{SignalState::kNotRunning};
+static_assert(std::atomic<SignalState>::is_always_lock_free);
 
 void OnReceivedSignal(int signal) {
-  g_signal_state = kSignaled;
+  g_signal_state = SignalState::kSignaled;
 }
+
+// How often an idle task runner checks for a signal while RunUntilSignaled()
+// is running.
+constexpr Clock::duration kSignalPollInterval = std::chrono::milliseconds(100);
 
 }  // namespace
 
@@ -90,7 +94,7 @@ void TaskRunnerImpl::RunUntilStopped() {
     if (GrabMoreRunnableTasks()) {
       RunRunnableTasks();
     }
-    if (g_signal_state == kSignaled) {
+    if (g_signal_state == SignalState::kSignaled) {
       is_running_ = false;
     }
   }
@@ -113,9 +117,9 @@ void TaskRunnerImpl::RunUntilStopped() {
 }
 
 void TaskRunnerImpl::RunUntilSignaled() {
-  OSP_CHECK_EQ(g_signal_state, kNotRunning)
+  OSP_CHECK(g_signal_state == SignalState::kNotRunning)
       << __func__ << " may not be invoked concurrently.";
-  g_signal_state = kNotSignaled;
+  g_signal_state = SignalState::kNotSignaled;
   const auto old_sigint_handler = std::signal(SIGINT, &OnReceivedSignal);
   const auto old_sigterm_handler = std::signal(SIGTERM, &OnReceivedSignal);
 #if defined(SIGHUP)
@@ -130,7 +134,7 @@ void TaskRunnerImpl::RunUntilSignaled() {
   std::signal(SIGHUP, old_sighup_handler);
 #endif
   OSP_DVLOG << "Received signal, setting state to not running...";
-  g_signal_state = kNotRunning;
+  g_signal_state = SignalState::kNotRunning;
 }
 
 void TaskRunnerImpl::RequestStopSoon() {
@@ -186,11 +190,26 @@ bool TaskRunnerImpl::GrabMoreRunnableTasks() OSP_NO_THREAD_SAFETY_ANALYSIS {
     return false;
   }
 
+  if (g_signal_state == SignalState::kSignaled) {
+    return false;  // RunUntilStopped() will stop. Don't wait for more tasks.
+  }
+
+  // A signal handler can't safely notify `run_loop_wakeup_`, so while
+  // RunUntilSignaled() is running, wake up periodically to check whether a
+  // signal arrived. Otherwise an idle task runner never notices it.
+  const bool poll_for_signal = g_signal_state == SignalState::kNotSignaled;
   if (delayed_tasks_.empty()) {
-    run_loop_wakeup_.wait(lock);
+    if (poll_for_signal) {
+      run_loop_wakeup_.wait_for(lock, kSignalPollInterval);
+    } else {
+      run_loop_wakeup_.wait(lock);
+    }
   } else {
-    run_loop_wakeup_.wait_for(lock,
-                              delayed_tasks_.begin()->first - now_function_());
+    Clock::duration timeout = delayed_tasks_.begin()->first - now_function_();
+    if (poll_for_signal) {
+      timeout = std::min(timeout, kSignalPollInterval);
+    }
+    run_loop_wakeup_.wait_for(lock, timeout);
   }
   return false;
 }

@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <csignal>
 #include <optional>
 #include <string>
 #include <thread>
@@ -121,6 +122,25 @@ TEST(TaskRunnerImplTest, ReportsIsRunningOnTaskRunner) {
   runner.RequestStopSoon();
   t.join();
   EXPECT_FALSE(runner.IsRunningOnTaskRunner());
+}
+
+// Tests that RunUntilSignaled() returns when the process gets SIGTERM while the
+// task runner is idle, with no tasks or delayed tasks to wake it up.
+TEST(TaskRunnerImplTest, RunUntilSignaledStopsWhenIdle) {
+  TaskRunnerImpl runner(&Clock::now);
+
+  // Raise the signal from a task, so the handler is installed by then, and
+  // from another thread after a delay, so the task runner is idle by then.
+  std::thread signaler;
+  runner.PostTask([&signaler] {
+    signaler = std::thread([] {
+      std::this_thread::sleep_for(milliseconds(200));
+      std::raise(SIGTERM);
+    });
+  });
+
+  runner.RunUntilSignaled();
+  signaler.join();
 }
 
 TEST(TaskRunnerImplTest, TaskRunnerRunsDelayedTasksInOrder) {
