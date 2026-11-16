@@ -16,9 +16,9 @@ namespace openscreen::json {
 
 namespace internal {
 
-ErrorOr<Json::Value> ParseWithSerde(std::string_view document) {
+ErrorOr<Value> ParseWithSerde(std::string_view document) {
   if (document.empty()) {
-    return ErrorOr<Json::Value>(Error::Code::kJsonParseError, "empty document");
+    return ErrorOr<Value>(Error::Code::kJsonParseError, "empty document");
   }
 
   serde::ValueBuilder builder;
@@ -27,14 +27,13 @@ ErrorOr<Json::Value> ParseWithSerde(std::string_view document) {
       reinterpret_cast<const uint8_t*>(document.data()), document.size());
 
   if (!serde::decode_json_to_builder(slice, builder, error_msg)) {
-    return ErrorOr<Json::Value>(Error::Code::kJsonParseError,
-                                std::string(error_msg));
+    return ErrorOr<Value>(Error::Code::kJsonParseError, std::string(error_msg));
   }
 
   return builder.TakeValue();
 }
 
-ErrorOr<std::string> StringifyWithSerde(const Json::Value& value) {
+ErrorOr<std::string> StringifyWithSerde(const Value& value) {
   serde::ValueVisitor visitor(value);
   ::rust::String output;
   ::rust::String error_msg;
@@ -60,14 +59,13 @@ namespace serde {
 ValueBuilder::ValueBuilder() = default;
 ValueBuilder::~ValueBuilder() = default;
 
-Json::Value* ValueBuilder::GetNextTarget() {
+Value* ValueBuilder::GetNextTarget() {
   if (stack_.empty()) {
     return &root_;
   }
   auto& top = stack_.back();
   if (top.type == StackEntry::Type::kArray) {
-    top.container->append(Json::Value());
-    return &((*top.container)[top.container->size() - 1]);
+    return &top.container->append(Value());
   } else {
     // kObject
     auto* target = &((*top.container)[top.pending_key]);
@@ -77,32 +75,32 @@ Json::Value* ValueBuilder::GetNextTarget() {
 }
 
 void ValueBuilder::set_null() {
-  *GetNextTarget() = Json::Value(Json::nullValue);
+  *GetNextTarget() = Value();
 }
 
 void ValueBuilder::set_bool(bool val) {
-  *GetNextTarget() = Json::Value(val);
+  *GetNextTarget() = Value(val);
 }
 
 void ValueBuilder::set_i64(int64_t val) {
-  *GetNextTarget() = Json::Value(static_cast<Json::Value::Int64>(val));
+  *GetNextTarget() = Value(val);
 }
 
 void ValueBuilder::set_u64(uint64_t val) {
-  *GetNextTarget() = Json::Value(static_cast<Json::Value::UInt64>(val));
+  *GetNextTarget() = Value(val);
 }
 
 void ValueBuilder::set_f64(double val) {
-  *GetNextTarget() = Json::Value(val);
+  *GetNextTarget() = Value(val);
 }
 
 void ValueBuilder::set_string(::rust::Str val) {
-  *GetNextTarget() = Json::Value(val.data(), val.data() + val.size());
+  *GetNextTarget() = Value(val.data(), val.data() + val.size());
 }
 
 void ValueBuilder::begin_array() {
-  Json::Value* target = GetNextTarget();
-  *target = Json::Value(Json::arrayValue);
+  Value* target = GetNextTarget();
+  *target = Value(ValueType::kArray);
   stack_.push_back(StackEntry{StackEntry::Type::kArray, target, ""});
 }
 
@@ -113,8 +111,8 @@ void ValueBuilder::end_array() {
 }
 
 void ValueBuilder::begin_object() {
-  Json::Value* target = GetNextTarget();
-  *target = Json::Value(Json::objectValue);
+  Value* target = GetNextTarget();
+  *target = Value(ValueType::kObject);
   stack_.push_back(StackEntry{StackEntry::Type::kObject, target, ""});
 }
 
@@ -130,44 +128,44 @@ void ValueBuilder::end_object() {
   }
 }
 
-Json::Value ValueBuilder::TakeValue() {
+Value ValueBuilder::TakeValue() {
   return std::move(root_);
 }
 
-ValueVisitor::ValueVisitor(const Json::Value& root) : root_(root) {}
+ValueVisitor::ValueVisitor(const Value& root) : root_(root) {}
 ValueVisitor::~ValueVisitor() = default;
 
 bool ValueVisitor::visit_node(SerdeJsonWriter& writer) {
   return VisitValue(root_, writer);
 }
 
-bool ValueVisitor::VisitValue(const Json::Value& val, SerdeJsonWriter& writer) {
+bool ValueVisitor::VisitValue(const Value& val, SerdeJsonWriter& writer) {
   switch (val.type()) {
-    case Json::nullValue:
+    case ValueType::kNull:
       write_null(writer);
       return true;
-    case Json::intValue:
+    case ValueType::kInt:
       write_i64(writer, val.asInt64());
       return true;
-    case Json::uintValue:
+    case ValueType::kUInt:
       write_u64(writer, val.asUInt64());
       return true;
-    case Json::realValue:
+    case ValueType::kReal:
       write_f64(writer, val.asDouble());
       return true;
-    case Json::stringValue: {
+    case ValueType::kString: {
       const char* begin = nullptr;
       const char* end = nullptr;
       val.getString(&begin, &end);
       write_str(writer, ::rust::Str(begin, end - begin));
       return true;
     }
-    case Json::booleanValue:
+    case ValueType::kBoolean:
       write_bool(writer, val.asBool());
       return true;
-    case Json::arrayValue: {
+    case ValueType::kArray: {
       write_array_start(writer);
-      for (Json::ArrayIndex i = 0; i < val.size(); ++i) {
+      for (Value::ArrayIndex i = 0; i < val.size(); ++i) {
         if (!VisitValue(val[i], writer)) {
           return false;
         }
@@ -175,7 +173,7 @@ bool ValueVisitor::VisitValue(const Json::Value& val, SerdeJsonWriter& writer) {
       write_array_end(writer);
       return true;
     }
-    case Json::objectValue: {
+    case ValueType::kObject: {
       write_object_start(writer);
       const auto member_names = val.getMemberNames();
       for (const auto& name : member_names) {

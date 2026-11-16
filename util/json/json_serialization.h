@@ -8,16 +8,16 @@
 #include <string>
 #include <string_view>
 
-#include "json/value.h"
 #include "platform/base/error.h"
+#include "util/json/json_value.h"
 
 namespace openscreen::json {
 
-// Parses a JSON document into a Json::Value AST.
-ErrorOr<Json::Value> Parse(std::string_view value);
+// Parses a JSON document into a json::Value AST.
+ErrorOr<Value> Parse(std::string_view value);
 
-// Serializes a Json::Value AST into a JSON string.
-ErrorOr<std::string> Stringify(const Json::Value& value);
+// Serializes a json::Value AST into a JSON string.
+ErrorOr<std::string> Stringify(const Value& value);
 
 }  // namespace openscreen::json
 

@@ -12,17 +12,16 @@
 #include <utility>
 #include <vector>
 
-#include "json/value.h"
 #include "platform/base/error.h"
 #include "util/chrono_helpers.h"
 #include "util/json/json_serialization.h"
+#include "util/json/json_value.h"
 #include "util/simple_fraction.h"
 
-// This file contains helper methods for parsing JSON, in an attempt to
-// reduce boilerplate code when working with JsonCpp.
+// This file contains helper methods for parsing JSON.
 namespace openscreen::json {
 
-inline bool TryParseBool(const Json::Value& value, bool* out) {
+inline bool TryParseBool(const Value& value, bool* out) {
   if (!value.isBool()) {
     return false;
   }
@@ -33,7 +32,7 @@ inline bool TryParseBool(const Json::Value& value, bool* out) {
 // A general note about parsing primitives. "Validation" in this context
 // generally means ensuring that the values are non-negative, excepting doubles
 // which may be negative in some cases.
-inline bool TryParseDouble(const Json::Value& value,
+inline bool TryParseDouble(const Value& value,
                            double* out,
                            bool allow_negative = false) {
   if (!value.isDouble()) {
@@ -50,7 +49,7 @@ inline bool TryParseDouble(const Json::Value& value,
   return true;
 }
 
-inline bool TryParseInt(const Json::Value& value, int* out) {
+inline bool TryParseInt(const Value& value, int* out) {
   if (!value.isInt()) {
     return false;
   }
@@ -62,7 +61,7 @@ inline bool TryParseInt(const Json::Value& value, int* out) {
   return true;
 }
 
-inline bool TryParseUint(const Json::Value& value, uint32_t* out) {
+inline bool TryParseUint(const Value& value, uint32_t* out) {
   if (!value.isUInt()) {
     return false;
   }
@@ -70,7 +69,7 @@ inline bool TryParseUint(const Json::Value& value, uint32_t* out) {
   return true;
 }
 
-inline bool TryParseString(const Json::Value& value, std::string* out) {
+inline bool TryParseString(const Value& value, std::string* out) {
   if (!value.isString()) {
     return false;
   }
@@ -81,8 +80,7 @@ inline bool TryParseString(const Json::Value& value, std::string* out) {
 // We want to be more robust when we parse fractions then just
 // allowing strings, this will parse numeral values such as
 // value: 50 as well as value: "50" and value: "100/2".
-inline bool TryParseSimpleFraction(const Json::Value& value,
-                                   SimpleFraction* out) {
+inline bool TryParseSimpleFraction(const Value& value, SimpleFraction* out) {
   if (value.isInt()) {
     int parsed = value.asInt();
     if (parsed < 0) {
@@ -108,7 +106,7 @@ inline bool TryParseSimpleFraction(const Json::Value& value,
   return false;
 }
 
-inline bool TryParseMilliseconds(const Json::Value& value, milliseconds* out) {
+inline bool TryParseMilliseconds(const Value& value, milliseconds* out) {
   int out_ms;
   if (!TryParseInt(value, &out_ms) || out_ms < 0) {
     return false;
@@ -118,21 +116,19 @@ inline bool TryParseMilliseconds(const Json::Value& value, milliseconds* out) {
 }
 
 template <typename T>
-using Parser = std::function<bool(const Json::Value&, T*)>;
+using Parser = std::function<bool(const Value&, T*)>;
 
 // NOTE: array parsing methods reset the output vector to an empty vector in
 // any error case. This is especially useful for optional arrays.
 template <typename T>
-bool TryParseArray(const Json::Value& value,
-                   Parser<T> parser,
-                   std::vector<T>* out) {
+bool TryParseArray(const Value& value, Parser<T> parser, std::vector<T>* out) {
   out->clear();
   if (!value.isArray() || value.empty()) {
     return false;
   }
 
   out->reserve(value.size());
-  for (Json::ArrayIndex i = 0; i < value.size(); ++i) {
+  for (Value::ArrayIndex i = 0; i < value.size(); ++i) {
     T v;
     if (!parser(value[i], &v)) {
       out->clear();
@@ -144,62 +140,62 @@ bool TryParseArray(const Json::Value& value,
   return true;
 }
 
-inline bool TryParseIntArray(const Json::Value& value, std::vector<int>* out) {
+inline bool TryParseIntArray(const Value& value, std::vector<int>* out) {
   return TryParseArray<int>(value, TryParseInt, out);
 }
 
-inline bool TryParseUintArray(const Json::Value& value,
-                              std::vector<uint32_t>* out) {
+inline bool TryParseUintArray(const Value& value, std::vector<uint32_t>* out) {
   return TryParseArray<uint32_t>(value, TryParseUint, out);
 }
 
-inline bool TryParseStringArray(const Json::Value& value,
+inline bool TryParseStringArray(const Value& value,
                                 std::vector<std::string>* out) {
   return TryParseArray<std::string>(value, TryParseString, out);
 }
 
 inline bool TryParseNestedStringArray(
-    const Json::Value& value,
+    const Value& value,
     std::vector<std::vector<std::string>>* out) {
   return TryParseArray<std::vector<std::string>>(value, TryParseStringArray,
                                                  out);
 }
 
 template <typename T>
-Json::Value PrimitiveVectorToJson(const std::vector<T>& vec) {
-  Json::Value array(Json::ValueType::arrayValue);
+Value PrimitiveVectorToJson(const std::vector<T>& vec) {
+  Value array(ValueType::kArray);
   array.resize(vec.size());
 
-  for (Json::Value::ArrayIndex i = 0; i < vec.size(); ++i) {
-    array[i] = Json::Value(vec[i]);
+  for (Value::ArrayIndex i = 0; i < vec.size(); ++i) {
+    array[i] = Value(vec[i]);
   }
 
   return array;
 }
 
-inline Json::Value NestedStringArrayToJson(
+inline Value NestedStringArrayToJson(
     const std::vector<std::vector<std::string>>& vec) {
-  Json::Value array(Json::ValueType::arrayValue);
+  Value array(ValueType::kArray);
   array.resize(vec.size());
 
-  for (Json::Value::ArrayIndex i = 0; i < vec.size(); ++i) {
+  for (Value::ArrayIndex i = 0; i < vec.size(); ++i) {
     array[i] = PrimitiveVectorToJson(vec[i]);
   }
 
   return array;
 }
 
-inline bool Contains(const Json::Value& array, std::string_view value) {
+inline bool Contains(const Value& array, std::string_view value) {
   if (!array.isArray()) {
     return false;
   }
-  for (const Json::Value& entry : array) {
+  for (const Value& entry : array) {
     if (entry.isString() && entry.asString() == value) {
       return true;
     }
   }
   return false;
 }
+
 }  // namespace openscreen::json
 
 #endif  // UTIL_JSON_JSON_HELPERS_H_

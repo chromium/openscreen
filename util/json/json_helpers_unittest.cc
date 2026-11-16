@@ -14,17 +14,17 @@ namespace {
 
 using ::testing::ElementsAre;
 
-// NOTE: not constexpr as Json::Value ctor is not constexpr
-const Json::Value& GetNone() {
-  static const NoDestructor<Json::Value> kNone;
+// NOTE: not constexpr as Value ctor is not constexpr
+const Value& GetNone() {
+  static const NoDestructor<Value> kNone;
   return *kNone;
 }
-const Json::Value& GetEmptyString() {
-  static const NoDestructor<Json::Value> kEmptyString("");
+const Value& GetEmptyString() {
+  static const NoDestructor<Value> kEmptyString("");
   return *kEmptyString;
 }
-const Json::Value& GetEmptyArray() {
-  static const NoDestructor<Json::Value> kEmptyArray(Json::arrayValue);
+const Value& GetEmptyArray() {
+  static const NoDestructor<Value> kEmptyArray(ValueType::kArray);
   return *kEmptyArray;
 }
 
@@ -36,7 +36,7 @@ struct Dummy {
   }
 };
 
-bool TryParseDummy(const Json::Value& value, Dummy* out) {
+bool TryParseDummy(const Value& value, Dummy* out) {
   int value_out;
   if (!TryParseInt(value, &value_out)) {
     return false;
@@ -48,11 +48,11 @@ bool TryParseDummy(const Json::Value& value, Dummy* out) {
 }  // namespace
 
 TEST(ParsingHelpersTest, TryParseDouble) {
-  const Json::Value kValid = 13.37;
-  const Json::Value kNotDouble = "coffee beans";
-  const Json::Value kNegativeDouble = -4.2;
-  const Json::Value kZeroDouble = 0.0;
-  const Json::Value kNanDouble = std::nan("");
+  const Value kValid = 13.37;
+  const Value kNotDouble = "coffee beans";
+  const Value kNegativeDouble = -4.2;
+  const Value kZeroDouble = 0.0;
+  const Value kNanDouble = std::nan("");
 
   double out;
   EXPECT_TRUE(TryParseDouble(kValid, &out));
@@ -66,10 +66,10 @@ TEST(ParsingHelpersTest, TryParseDouble) {
 }
 
 TEST(ParsingHelpersTest, TryParseInt) {
-  const Json::Value kValid = 1337;
-  const Json::Value kNotInt = "cold brew";
-  const Json::Value kNegativeInt = -42;
-  const Json::Value kZeroInt = 0;
+  const Value kValid = 1337;
+  const Value kNotInt = "cold brew";
+  const Value kNegativeInt = -42;
+  const Value kZeroInt = 0;
 
   int out;
   EXPECT_TRUE(TryParseInt(kValid, &out));
@@ -82,9 +82,9 @@ TEST(ParsingHelpersTest, TryParseInt) {
 }
 
 TEST(ParsingHelpersTest, TryParseUint) {
-  const Json::Value kValid = 1337u;
-  const Json::Value kNotUint = "espresso";
-  const Json::Value kZeroUint = 0u;
+  const Value kValid = 1337u;
+  const Value kNotUint = "espresso";
+  const Value kZeroUint = 0u;
 
   uint32_t out;
   EXPECT_TRUE(TryParseUint(kValid, &out));
@@ -96,8 +96,8 @@ TEST(ParsingHelpersTest, TryParseUint) {
 }
 
 TEST(ParsingHelpersTest, TryParseString) {
-  const Json::Value kValid = "macchiato";
-  const Json::Value kNotString = 42;
+  const Value kValid = "macchiato";
+  const Value kNotString = 42;
 
   std::string out;
   EXPECT_TRUE(TryParseString(kValid, &out));
@@ -111,14 +111,14 @@ TEST(ParsingHelpersTest, TryParseString) {
 // Simple fraction validity is tested extensively in its unit tests, so we
 // just check the major cases here.
 TEST(ParsingHelpersTest, TryParseSimpleFraction) {
-  const Json::Value kValid = "42/30";
-  const Json::Value kValidNumber = "42";
-  const Json::Value kUndefined = "5/0";
-  const Json::Value kNegative = "10/-2";
-  const Json::Value kInvalidNumber = "-1";
-  const Json::Value kNotSimpleFraction = "latte";
-  const Json::Value kInteger = 123;
-  const Json::Value kNegativeInteger = -5000;
+  const Value kValid = "42/30";
+  const Value kValidNumber = "42";
+  const Value kUndefined = "5/0";
+  const Value kNegative = "10/-2";
+  const Value kInvalidNumber = "-1";
+  const Value kNotSimpleFraction = "latte";
+  const Value kInteger = 123;
+  const Value kNegativeInteger = -5000;
 
   SimpleFraction out;
   EXPECT_TRUE(TryParseSimpleFraction(kValid, &out));
@@ -137,11 +137,11 @@ TEST(ParsingHelpersTest, TryParseSimpleFraction) {
 }
 
 TEST(ParsingHelpersTest, TryParseMilliseconds) {
-  const Json::Value kValid = 1000;
-  const Json::Value kValidFloat = 500.0;
-  const Json::Value kNegativeNumber = -120;
-  const Json::Value kZeroNumber = 0;
-  const Json::Value kNotNumber = "affogato";
+  const Value kValid = 1000;
+  const Value kValidFloat = 500.0;
+  const Value kNegativeNumber = -120;
+  const Value kZeroNumber = 0;
+  const Value kNotNumber = "affogato";
 
   milliseconds out;
   EXPECT_TRUE(TryParseMilliseconds(kValid, &out));
@@ -156,11 +156,11 @@ TEST(ParsingHelpersTest, TryParseMilliseconds) {
 }
 
 TEST(ParsingHelpersTest, TryParseArray) {
-  Json::Value valid_dummy_array;
+  Value valid_dummy_array;
   valid_dummy_array[0] = 123;
   valid_dummy_array[1] = 456;
 
-  Json::Value invalid_dummy_array;
+  Value invalid_dummy_array;
   invalid_dummy_array[0] = "iced coffee";
   invalid_dummy_array[1] = 456;
 
@@ -172,11 +172,11 @@ TEST(ParsingHelpersTest, TryParseArray) {
 }
 
 TEST(ParsingHelpersTest, TryParseIntArray) {
-  Json::Value valid_int_array;
+  Value valid_int_array;
   valid_int_array[0] = 123;
   valid_int_array[1] = 456;
 
-  Json::Value invalid_int_array;
+  Value invalid_int_array;
   invalid_int_array[0] = "iced coffee";
   invalid_int_array[1] = 456;
 
@@ -188,11 +188,11 @@ TEST(ParsingHelpersTest, TryParseIntArray) {
 }
 
 TEST(ParsingHelpersTest, TryParseUintArray) {
-  Json::Value valid_uint_array;
+  Value valid_uint_array;
   valid_uint_array[0] = 123u;
   valid_uint_array[1] = 456u;
 
-  Json::Value invalid_uint_array;
+  Value invalid_uint_array;
   invalid_uint_array[0] = "breve";
   invalid_uint_array[1] = 456u;
 
@@ -204,11 +204,11 @@ TEST(ParsingHelpersTest, TryParseUintArray) {
 }
 
 TEST(ParsingHelpersTest, TryParseStringArray) {
-  Json::Value valid_string_array;
+  Value valid_string_array;
   valid_string_array[0] = "nitro cold brew";
   valid_string_array[1] = "doppio espresso";
 
-  Json::Value invalid_string_array;
+  Value invalid_string_array;
   invalid_string_array[0] = "mocha latte";
   invalid_string_array[1] = 456;
 

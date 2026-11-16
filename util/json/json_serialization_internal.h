@@ -8,8 +8,8 @@
 #include <string>
 #include <string_view>
 
-#include "json/value.h"
 #include "platform/base/error.h"
+#include "util/json/json_value.h"
 
 namespace openscreen::json::internal {
 
@@ -26,16 +26,16 @@ JsonBackend GetDefaultJsonBackend();
 
 // Same as json::Parse() and json::Stringify(), but use `backend`. If `backend`
 // is not available in this build, the jsoncpp backend is used.
-ErrorOr<Json::Value> Parse(std::string_view document, JsonBackend backend);
-ErrorOr<std::string> Stringify(const Json::Value& value, JsonBackend backend);
+ErrorOr<Value> Parse(std::string_view document, JsonBackend backend);
+ErrorOr<std::string> Stringify(const Value& value, JsonBackend backend);
 
 // Backend implementations.
-ErrorOr<Json::Value> ParseWithJsoncpp(std::string_view document);
-ErrorOr<std::string> StringifyWithJsoncpp(const Json::Value& value);
+ErrorOr<Value> ParseWithJsoncpp(std::string_view document);
+ErrorOr<std::string> StringifyWithJsoncpp(const Value& value);
 
 #if defined(USE_JSON_SERDE)
-ErrorOr<Json::Value> ParseWithSerde(std::string_view document);
-ErrorOr<std::string> StringifyWithSerde(const Json::Value& value);
+ErrorOr<Value> ParseWithSerde(std::string_view document);
+ErrorOr<std::string> StringifyWithSerde(const Value& value);
 #endif  // defined(USE_JSON_SERDE)
 
 }  // namespace openscreen::json::internal

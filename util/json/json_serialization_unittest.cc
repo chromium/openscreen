@@ -5,6 +5,7 @@
 #include "util/json/json_serialization.h"
 
 #include <array>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -27,11 +28,11 @@ void AssertError(ErrorOr<Value> error_or, Error::Code code) {
 // Runs each test against every JSON backend built into this binary.
 class JsonSerializationTest : public testing::TestWithParam<JsonBackend> {
  protected:
-  ErrorOr<Json::Value> Parse(std::string_view document) {
+  ErrorOr<json::Value> Parse(std::string_view document) {
     return json::internal::Parse(document, GetParam());
   }
 
-  ErrorOr<std::string> Stringify(const Json::Value& value) {
+  ErrorOr<std::string> Stringify(const json::Value& value) {
     return json::internal::Stringify(value, GetParam());
   }
 };
@@ -63,7 +64,7 @@ TEST(JsonSerializationDefaultBackendTest, PublicApiParsesAndStringifies) {
   ASSERT_TRUE(parsed.is_value());
   EXPECT_EQ(parsed.value()["foo"].asString(), "bar");
 
-  const auto serialized = json::Stringify(Json::Value(true));
+  const auto serialized = json::Stringify(json::Value(true));
   ASSERT_TRUE(serialized.is_value());
   EXPECT_EQ(serialized.value(), "true");
 }
@@ -118,7 +119,7 @@ TEST_P(JsonSerializationTest, ComplexNestedDocumentParsedCorrectly) {
 }
 
 TEST_P(JsonSerializationTest, EmptyArrayReturnsBrackets) {
-  const auto empty_array = Json::Value(Json::ValueType::arrayValue);
+  const auto empty_array = json::Value(json::ValueType::kArray);
   const auto actual = Stringify(empty_array);
 
   EXPECT_TRUE(actual.is_value());
@@ -126,7 +127,7 @@ TEST_P(JsonSerializationTest, EmptyArrayReturnsBrackets) {
 }
 
 TEST_P(JsonSerializationTest, NullValueReturnsNull) {
-  const auto null_value = Json::Value();
+  const auto null_value = json::Value();
   const auto actual = Stringify(null_value);
 
   EXPECT_TRUE(actual.is_value());
@@ -134,16 +135,16 @@ TEST_P(JsonSerializationTest, NullValueReturnsNull) {
 }
 
 TEST_P(JsonSerializationTest, ValidValueReturnsString) {
-  const Json::Int64 value = 31337;
-  const auto actual = Stringify(value);
+  const int64_t value = 31337;
+  const auto actual = Stringify(json::Value(value));
 
   EXPECT_TRUE(actual.is_value());
   EXPECT_EQ(actual.value(), "31337");
 }
 
 TEST_P(JsonSerializationTest, BooleanValuesStringified) {
-  EXPECT_EQ(Stringify(Json::Value(true)).value(), "true");
-  EXPECT_EQ(Stringify(Json::Value(false)).value(), "false");
+  EXPECT_EQ(Stringify(json::Value(true)).value(), "true");
+  EXPECT_EQ(Stringify(json::Value(false)).value(), "false");
 }
 
 TEST_P(JsonSerializationTest, ArrayAndObjectRoundTrip) {

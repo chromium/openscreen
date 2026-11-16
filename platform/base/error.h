@@ -8,6 +8,7 @@
 #include <cassert>
 #include <ostream>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 
@@ -304,6 +305,28 @@ class ErrorOr {
 
   ErrorOr& operator=(const ErrorOr& other) = delete;
   ErrorOr& operator=(ErrorOr&& other) noexcept {
+    this->~ErrorOr<ValueType>();
+    new (this) ErrorOr<ValueType>(std::move(other));
+    return *this;
+  }
+
+  template <
+      typename OtherType,
+      typename = std::enable_if_t<!std::is_same_v<OtherType, ValueType> &&
+                                  std::is_convertible_v<OtherType, ValueType>>>
+  ErrorOr(ErrorOr<OtherType>&& other) noexcept : is_value_(other.is_value()) {
+    if (other.is_value()) {
+      new (&value_) ValueType(std::move(other.value()));
+    } else {
+      new (&error_) Error(std::move(other.error()));
+    }
+  }
+
+  template <
+      typename OtherType,
+      typename = std::enable_if_t<!std::is_same_v<OtherType, ValueType> &&
+                                  std::is_convertible_v<OtherType, ValueType>>>
+  ErrorOr& operator=(ErrorOr<OtherType>&& other) noexcept {
     this->~ErrorOr<ValueType>();
     new (this) ErrorOr<ValueType>(std::move(other));
     return *this;

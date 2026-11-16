@@ -15,11 +15,11 @@
 
 namespace openscreen::json::internal {
 
-ErrorOr<Json::Value> ParseWithJsoncpp(std::string_view document) {
+ErrorOr<Value> ParseWithJsoncpp(std::string_view document) {
   Json::CharReaderBuilder builder;
   Json::CharReaderBuilder::strictMode(&builder.settings_);
   if (document.empty()) {
-    return ErrorOr<Json::Value>(Error::Code::kJsonParseError, "empty document");
+    return ErrorOr<Value>(Error::Code::kJsonParseError, "empty document");
   }
 
   Json::Value root_node;
@@ -28,13 +28,13 @@ ErrorOr<Json::Value> ParseWithJsoncpp(std::string_view document) {
   const bool succeeded = reader->parse(&*document.begin(), &*document.end(),
                                        &root_node, &error_msg);
   if (!succeeded) {
-    return ErrorOr<Json::Value>(Error::Code::kJsonParseError, error_msg);
+    return ErrorOr<Value>(Error::Code::kJsonParseError, error_msg);
   }
 
-  return root_node;
+  return Value(root_node);
 }
 
-ErrorOr<std::string> StringifyWithJsoncpp(const Json::Value& value) {
+ErrorOr<std::string> StringifyWithJsoncpp(const Value& value) {
   Json::StreamWriterBuilder factory;
 #ifndef _DEBUG
   // Default is to "pretty print" the output JSON in a human readable
@@ -45,7 +45,8 @@ ErrorOr<std::string> StringifyWithJsoncpp(const Json::Value& value) {
 
   std::unique_ptr<Json::StreamWriter> const writer(factory.newStreamWriter());
   std::ostringstream stream;
-  writer->write(value, &stream);
+  const ::Json::Value jsoncpp_value = static_cast<::Json::Value>(value);
+  writer->write(jsoncpp_value, &stream);
 
   if (!stream) {
     // Note: jsoncpp doesn't give us more information about what actually

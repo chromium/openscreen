@@ -20,7 +20,7 @@ JsonBackend GetDefaultJsonBackend() {
   return JsonBackend::kJsoncpp;
 }
 
-ErrorOr<Json::Value> Parse(std::string_view document, JsonBackend backend) {
+ErrorOr<Value> Parse(std::string_view document, JsonBackend backend) {
 #if defined(USE_JSON_SERDE)
   if (backend == JsonBackend::kSerde) {
     return ParseWithSerde(document);
@@ -29,7 +29,7 @@ ErrorOr<Json::Value> Parse(std::string_view document, JsonBackend backend) {
   return ParseWithJsoncpp(document);
 }
 
-ErrorOr<std::string> Stringify(const Json::Value& value, JsonBackend backend) {
+ErrorOr<std::string> Stringify(const Value& value, JsonBackend backend) {
 #if defined(USE_JSON_SERDE)
   if (backend == JsonBackend::kSerde) {
     return StringifyWithSerde(value);
@@ -40,11 +40,11 @@ ErrorOr<std::string> Stringify(const Json::Value& value, JsonBackend backend) {
 
 }  // namespace internal
 
-ErrorOr<Json::Value> Parse(std::string_view document) {
+ErrorOr<Value> Parse(std::string_view document) {
   return internal::Parse(document, internal::GetDefaultJsonBackend());
 }
 
-ErrorOr<std::string> Stringify(const Json::Value& value) {
+ErrorOr<std::string> Stringify(const Value& value) {
   return internal::Stringify(value, internal::GetDefaultJsonBackend());
 }
 

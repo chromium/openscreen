@@ -20,9 +20,9 @@ namespace openscreen {
 
 TEST(JsonValueTest, GetInt) {
   std::string_view obj(R"!({"key1": 17, "key2": 32.3, "key3": "asdf"})!");
-  ErrorOr<Json::Value> value_or_error = json::Parse(obj);
+  ErrorOr<json::Value> value_or_error = json::Parse(obj);
   ASSERT_TRUE(value_or_error);
-  json::Value value(value_or_error.value());
+  json::Value& value = value_or_error.value();
   std::optional<int> result1 =
       MaybeGetInt(value, JSON_EXPAND_FIND_CONSTANT_ARGS("key1"));
   std::optional<int> result2 =
@@ -39,9 +39,9 @@ TEST(JsonValueTest, GetInt) {
 TEST(JsonValueTest, GetString) {
   std::string_view obj(
       R"!({"key1": 17, "key2": 32.3, "key3": "asdf", "key4": ""})!");
-  ErrorOr<Json::Value> value_or_error = json::Parse(obj);
+  ErrorOr<json::Value> value_or_error = json::Parse(obj);
   ASSERT_TRUE(value_or_error);
-  json::Value value(value_or_error.value());
+  json::Value& value = value_or_error.value();
   std::optional<std::string_view> result1 =
       MaybeGetString(value, JSON_EXPAND_FIND_CONSTANT_ARGS("key3"));
   std::optional<std::string_view> result2 =
