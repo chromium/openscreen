@@ -122,39 +122,19 @@ Clock::duration SenderImpl::GetInFlightMediaDuration(
     return Clock::duration::zero();  // No frames are currently in-flight.
   }
 
-  const PendingFrameSlot& oldest_slot = get_slot_for(checkpoint_frame_id_ + 1);
-
-  // Note: The oldest slot's frame cannot have been canceled because the
-  // protocol does not allow ACK'ing this particular frame without also moving
-  // the checkpoint forward. See "CST2 feedback" discussion in rtp_defines.h.
-  OSP_CHECK(oldest_slot.is_active_for_frame(checkpoint_frame_id_ + 1));
-
-  // Sum the media duration of each active frame in flight by walking from the
-  // oldest unacknowledged frame (`checkpoint_frame_id_ + 1`) through
-  // `last_enqueued_frame_id_`, skipping any intermediate frames that were
-  // individually ACKed and canceled out of order, and finally adding the step
-  // from `last_enqueued_frame_id_` to `next_frame_rtp_timestamp`. Each frame's
-  // inferred duration (the RTP timestamp delta to the next active frame) is
-  // clamped to `kMaxUnpausedFrameDuration` so that a capture pause or dropped
-  // frame between two consecutive frames does not inflate the total in-flight
-  // media duration.
-  Clock::duration total_duration = Clock::duration::zero();
-  RtpTimeTicks prev_timestamp = oldest_slot.frame.rtp_timestamp;
-  for (FrameId id = checkpoint_frame_id_ + 2; id <= last_enqueued_frame_id_;
-       ++id) {
-    const PendingFrameSlot& slot = get_slot_for(id);
-    if (!slot.is_active_for_frame(id)) {
-      continue;
-    }
-    const auto step = (slot.frame.rtp_timestamp - prev_timestamp)
-                          .ToDuration<Clock::duration>(rtp_timebase_);
-    total_duration += std::min(step, kMaxUnpausedFrameDuration);
-    prev_timestamp = slot.frame.rtp_timestamp;
+  // `in_flight_media_duration_` holds the sum of clamped inter-frame durations
+  // for all active in-flight frames prior to `last_enqueued_frame_id_`. If
+  // `last_enqueued_frame_id_` is itself still active, add its clamped step up
+  // to `next_frame_rtp_timestamp`.
+  Clock::duration total_duration = in_flight_media_duration_;
+  const PendingFrameSlot& newest_slot = get_slot_for(last_enqueued_frame_id_);
+  if (newest_slot.is_active_for_frame(last_enqueued_frame_id_)) {
+    const auto tail_step =
+        (next_frame_rtp_timestamp - newest_slot.frame.rtp_timestamp)
+            .ToDuration<Clock::duration>(rtp_timebase_);
+    total_duration += std::clamp(tail_step, Clock::duration::zero(),
+                                 kMaxUnpausedFrameDuration);
   }
-
-  const auto next_step = (next_frame_rtp_timestamp - prev_timestamp)
-                             .ToDuration<Clock::duration>(rtp_timebase_);
-  total_duration += std::min(next_step, kMaxUnpausedFrameDuration);
   return total_duration;
 }
 
@@ -257,6 +237,19 @@ openscreen::cast::Sender::EnqueueFrameResult SenderImpl::EnqueueFrame(
   }
   slot.send_flags.Resize(packet_count, BitVector::SET);
   slot.packet_sent_times.assign(packet_count, SenderPacketRouter::kNever);
+  slot.media_duration = Clock::duration::zero();
+
+  if (last_enqueued_frame_id_ != FrameId::leader()) {
+    PendingFrameSlot& prev_slot = get_slot_for(last_enqueued_frame_id_);
+    if (prev_slot.is_active_for_frame(last_enqueued_frame_id_)) {
+      const auto prev_duration =
+          (slot.frame.rtp_timestamp - prev_slot.frame.rtp_timestamp)
+              .ToDuration<Clock::duration>(rtp_timebase_);
+      prev_slot.media_duration = std::clamp(
+          prev_duration, Clock::duration::zero(), kMaxUnpausedFrameDuration);
+      in_flight_media_duration_ += prev_slot.media_duration;
+    }
+  }
 
   // Officially record the "enqueue."
   ++num_frames_in_flight_;
@@ -843,9 +836,15 @@ void SenderImpl::CancelPendingFrame(FrameId frame_id, bool was_acked) {
                              now_());
   }
 
+  in_flight_media_duration_ -= slot.media_duration;
+  slot.media_duration = Clock::duration::zero();
+  OSP_CHECK_GE(in_flight_media_duration_, Clock::duration::zero());
   slot.frame.frame_id = FrameId();
   OSP_CHECK_GT(num_frames_in_flight_, 0);
   --num_frames_in_flight_;
+  if (num_frames_in_flight_ == 0) {
+    OSP_CHECK_EQ(in_flight_media_duration_, Clock::duration::zero());
+  }
   if (observer_) {
     pending_cancellations_.emplace_back(frame_id);
   }

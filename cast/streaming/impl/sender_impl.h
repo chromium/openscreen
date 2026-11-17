@@ -99,6 +99,10 @@ class SenderImpl final : public Sender,
     // re-transmitting any given packet too frequently.
     std::vector<Clock::time_point> packet_sent_times;
 
+    // Clamped media duration attributed to this frame once the following frame
+    // is enqueued, or zero while this is the newest enqueued frame.
+    Clock::duration media_duration = Clock::duration::zero();
+
     PendingFrameSlot();
     ~PendingFrameSlot();
 
@@ -200,6 +204,11 @@ class SenderImpl final : public Sender,
   // A count of the number of frames in-flight (i.e., the number of active
   // entries in `pending_frames_`).
   size_t num_frames_in_flight_ = 0;
+
+  // Running sum of `PendingFrameSlot::media_duration` across all active frames
+  // in `pending_frames_` (excluding `last_enqueued_frame_id_`, whose duration
+  // is measured against `next_frame_rtp_timestamp`).
+  Clock::duration in_flight_media_duration_ = Clock::duration::zero();
 
   // The ID of the last frame enqueued.
   FrameId last_enqueued_frame_id_ = FrameId::leader();

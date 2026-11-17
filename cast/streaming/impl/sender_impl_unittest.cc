@@ -673,6 +673,51 @@ TEST_F(SenderTest, DoesNotRejectFrameAfterStaticScreenCaptureGap) {
   EXPECT_EQ(2u, sender()->GetInFlightFrameCount());
 }
 
+// Tests that individually ACKing an intermediate (or newest) in-flight frame
+// immediately subtracts that frame's attributed duration from the running
+// in-flight media duration total, even while an older frame remains unACKed.
+TEST_F(SenderTest, OutOfOrderAckReducesInFlightMediaDuration) {
+  const auto rtp_step =
+      RtpTimeDelta::FromDuration(milliseconds(20), kRtpTimebase);
+  const Clock::time_point base_time = FakeClock::now();
+
+  EncodedFrameWithBuffer frames[3];
+  for (int i = 0; i < 3; ++i) {
+    PopulateFrameWithDefaults(FrameId::first() + i,
+                              base_time + milliseconds(20 * i), i,
+                              13 /* bytes */, &frames[i]);
+    frames[i].rtp_timestamp = RtpTimeTicks() + rtp_step * i;
+    ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frames[i]));
+  }
+  const RtpTimeTicks next_rtp = RtpTimeTicks() + rtp_step * 3;
+  EXPECT_EQ(3u, sender()->GetInFlightFrameCount());
+  EXPECT_EQ(Clock::to_duration(milliseconds(60)),
+            sender()->GetInFlightMediaDuration(next_rtp));
+
+  // Individually ACK F1 while F0 stays unACKed: F1's 20 ms share is freed
+  // immediately, leaving 40 ms (20 ms for F0 + 20 ms for F2 -> next_rtp).
+  receiver()->SetNacksAndAcks({}, {FrameId::first() + 1});
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution();
+  EXPECT_EQ(2u, sender()->GetInFlightFrameCount());
+  EXPECT_EQ(Clock::to_duration(milliseconds(40)),
+            sender()->GetInFlightMediaDuration(next_rtp));
+
+  // Individually ACK the newest frame (F2) while F0 still stays unACKed:
+  // only F0's 20 ms share remains in flight.
+  receiver()->SetNacksAndAcks({}, {FrameId::first() + 2});
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution();
+  EXPECT_EQ(1u, sender()->GetInFlightFrameCount());
+  EXPECT_EQ(Clock::to_duration(milliseconds(20)),
+            sender()->GetInFlightMediaDuration(next_rtp));
+
+  sender()->CancelInFlightData();
+  EXPECT_EQ(0u, sender()->GetInFlightFrameCount());
+  EXPECT_EQ(Clock::duration::zero(),
+            sender()->GetInFlightMediaDuration(next_rtp));
+}
+
 // Tests that the Sender computes the maximum in-flight media duration based on
 // its analysis of current network conditions. By implication, this demonstrates
 // that the Sender is also measuring the network round-trip time.
