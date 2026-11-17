@@ -314,11 +314,50 @@ impl<'de, 'a, 'b> Visitor<'de> for JsonVisitor<'a, 'b> {
         M: MapAccess<'de>,
     {
         self.builder.as_mut().begin_object();
-        while let Some(key) = access.next_key::<&str>()? {
-            self.builder.as_mut().set_object_key(key);
+        while let Some(()) = access.next_key_seed(KeySeed { builder: self.builder })? {
             access.next_value_seed(JsonSeed { builder: self.builder })?;
         }
         self.builder.as_mut().end_object();
+        Ok(())
+    }
+}
+
+// Passes an object key to the builder. Keys must not be read with
+// next_key::<&str>(): that only works when serde can borrow the key from the
+// input, so it fails for any key with an escape sequence (for example "a\nb"),
+// which serde_json has to unescape into a temporary buffer.
+struct KeySeed<'a, 'b> {
+    builder: &'a mut Pin<&'b mut ffi::ValueBuilder>,
+}
+
+impl<'de, 'a, 'b> DeserializeSeed<'de> for KeySeed<'a, 'b> {
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<(), D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(KeyVisitor { builder: self.builder })
+    }
+}
+
+struct KeyVisitor<'a, 'b> {
+    builder: &'a mut Pin<&'b mut ffi::ValueBuilder>,
+}
+
+impl<'de, 'a, 'b> Visitor<'de> for KeyVisitor<'a, 'b> {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("an object key")
+    }
+
+    // Borrowed and owned keys both arrive here.
+    fn visit_str<E>(self, v: &str) -> Result<(), E>
+    where
+        E: de::Error,
+    {
+        self.builder.as_mut().set_object_key(v);
         Ok(())
     }
 }

@@ -162,6 +162,19 @@ TEST_P(JsonSerializationTest, ArrayAndObjectRoundTrip) {
   EXPECT_EQ(reparsed.value()["numbers"][2].asInt(), 3);
 }
 
+TEST_P(JsonSerializationTest, ParsesObjectKeysWithEscapes) {
+  const auto actual = Parse(R"({"quote\"key": 1, "line\nbreak": 2, )"
+                            R"("caf\u00e9": 3, "k\u0000ey": 4})");
+
+  ASSERT_TRUE(actual.is_value());
+  const json::Value& value = actual.value();
+  EXPECT_EQ(value.getMemberNames().size(), 4u);
+  EXPECT_EQ(value["quote\"key"].asInt(), 1);
+  EXPECT_EQ(value["line\nbreak"].asInt(), 2);
+  EXPECT_EQ(value["caf\xC3\xA9"].asInt(), 3);
+  EXPECT_EQ(value[std::string("k\0ey", 4)].asInt(), 4);
+}
+
 #if defined(USE_JSON_SERDE)
 INSTANTIATE_TEST_SUITE_P(All,
                          JsonSerializationTest,
