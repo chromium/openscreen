@@ -7,7 +7,7 @@ Security Critical: yes
 Update Mechanism: Autoroll
 Shipped: yes
 Version: N/A
-Revision: 07451bae249eecb87644642235dd03a6cd5c3e4d
+Revision: 56d325f6ed8f40d2ef136afcdf9183510a524549
 
 Description:
 This directory contains the source code of TinyCBOR, which is a binary object
