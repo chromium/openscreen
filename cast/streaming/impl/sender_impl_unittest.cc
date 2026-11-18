@@ -794,6 +794,98 @@ TEST_F(SenderTest, CapsInFlightMediaDurationUnderHighLatency) {
   EXPECT_EQ(cap, sender()->GetMaxInFlightMediaDuration());
 }
 
+// Tests that Receiver Reports without a matching Sender Report (e.g., an unset
+// last_status_report_id == 0 per RFC 3550, or a report arriving before any
+// Sender Report has been sent) do not poison the RTT estimate by clamping a
+// bogus reconstructed delta to `target_playout_delay`.
+TEST_F(SenderTest, IgnoresReceiverReportWithoutValidSenderReport) {
+  ASSERT_EQ(Clock::duration::zero(), sender()->GetCurrentRoundTripTime());
+
+  // Advance clock so StatusReportId{} == 0 reconstructs well into the past.
+  SimulateExecution(milliseconds(100));
+
+  // Unset StatusReportId (0) before any Sender Report is sent is ignored.
+  receiver()->SetReceiverReport(StatusReportId{},
+                                RtcpReportBlock::Delay::zero());
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution(milliseconds(5));
+  EXPECT_EQ(Clock::duration::zero(), sender()->GetCurrentRoundTripTime());
+
+  // Non-zero StatusReportId before any Sender Report is sent is also ignored.
+  receiver()->SetReceiverReport(StatusReportId{0x12345678},
+                                RtcpReportBlock::Delay::zero());
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution(milliseconds(5));
+  EXPECT_EQ(Clock::duration::zero(), sender()->GetCurrentRoundTripTime());
+
+  // Once a frame is enqueued and a real SR/RR exchange happens, RTT is measured
+  // normally, and a later unset StatusReportId does not spike it.
+  {
+    EncodedFrameWithBuffer frame;
+    PopulateFrameWithDefaults(FrameId::first(), FakeClock::now(), 0,
+                              1 /* byte */, &frame);
+    ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
+  }
+  constexpr milliseconds kOutboundDelay(10);
+  constexpr milliseconds kInboundDelay(10);
+  constexpr milliseconds kExpectedRtt(kOutboundDelay + kInboundDelay);
+  constexpr auto kEpsilon = 2 * to_nanoseconds(RtcpReportBlock::Delay(1));
+  SimulateNetworkRoundTrip(kOutboundDelay, kInboundDelay);
+  const Clock::duration measured_rtt = sender()->GetCurrentRoundTripTime();
+  EXPECT_NEARLY_EQUAL(kExpectedRtt, measured_rtt, kEpsilon);
+
+  receiver()->SetReceiverReport(StatusReportId{},
+                                RtcpReportBlock::Delay::zero());
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution(kInboundDelay);
+  EXPECT_EQ(measured_rtt, sender()->GetCurrentRoundTripTime());
+}
+
+// Tests that a non-zero StatusReportId referring to a time before the first
+// Sender Report was sent (for example, a stale report from an earlier session)
+// is ignored, while a report for the actual Sender Report is still used.
+TEST_F(SenderTest, IgnoresReceiverReportPredatingFirstSenderReport) {
+  ASSERT_EQ(Clock::duration::zero(), sender()->GetCurrentRoundTripTime());
+  SimulateExecution(seconds(10));
+
+  constexpr milliseconds kOutboundDelay(10);
+  constexpr milliseconds kInboundDelay(10);
+  SetSenderToReceiverNetworkDelay(kOutboundDelay);
+  SetReceiverToSenderNetworkDelay(kInboundDelay);
+
+  StatusReportId sender_report_id{};
+  EXPECT_CALL(*receiver(), OnSenderReport(_))
+      .WillOnce([&](const SenderReportParser::SenderReportWithId& report) {
+        sender_report_id = report.report_id;
+      });
+  {
+    EncodedFrameWithBuffer frame;
+    PopulateFrameWithDefaults(FrameId::first(), FakeClock::now(), 0,
+                              1 /* byte */, &frame);
+    ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
+  }
+  SimulateExecution(kOutboundDelay);
+  Mock::VerifyAndClearExpectations(receiver());
+  ASSERT_NE(StatusReportId{}, sender_report_id);
+
+  // A StatusReportId is the middle 32 bits of an NTP timestamp, so its upper
+  // 16 bits count whole seconds. Refer to a time 3 seconds before the first
+  // Sender Report.
+  constexpr StatusReportId kThreeSeconds = StatusReportId{3} << 16;
+  receiver()->SetReceiverReport(sender_report_id - kThreeSeconds,
+                                RtcpReportBlock::Delay::zero());
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution(kInboundDelay);
+  EXPECT_EQ(Clock::duration::zero(), sender()->GetCurrentRoundTripTime());
+
+  // A report for the real Sender Report is accepted.
+  receiver()->SetReceiverReport(sender_report_id,
+                                RtcpReportBlock::Delay::zero());
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution(kInboundDelay);
+  EXPECT_GT(sender()->GetCurrentRoundTripTime(), Clock::duration::zero());
+}
+
 // Tests that when two thirds of the playout delay falls below the in-flight
 // floor, the floor wins and the std::clamp() bounds remain well-ordered (no
 // precondition violation).

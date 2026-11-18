@@ -378,6 +378,9 @@ ByteBuffer SenderImpl::GetRtcpPacketForImmediateSend(
   sender_report.rtp_timestamp += RtpTimeDelta::FromDuration(
       sender_report.reference_time - pending_sender_report_.reference_time,
       rtp_timebase_);
+  if (first_sender_report_time_ == SenderPacketRouter::kNever) {
+    first_sender_report_time_ = send_time;
+  }
 
   return sender_report_builder_.BuildPacket(sender_report, buffer).first;
 }
@@ -490,10 +493,25 @@ Clock::duration SenderImpl::SmoothRoundTripTime(Clock::duration estimate,
 void SenderImpl::OnReceiverReport(const RtcpReportBlock& receiver_report) {
   OSP_CHECK_NE(rtcp_packet_arrival_time_, SenderPacketRouter::kNever);
 
-  const Clock::duration total_delay =
-      rtcp_packet_arrival_time_ -
+  // Per RFC 3550 Section 6.4.1, last_status_report_id == 0 means the Receiver
+  // has not received a Sender Report yet. Ignore reports with an unset ID,
+  // before any Sender Report has been sent, or resolving earlier than the first
+  // Sender Report (with a 32 us tolerance, about twice the ~15 us
+  // StatusReportId truncation) rather than clamping a bogus multi-hour delay to
+  // `target_playout_delay_`.
+  if (receiver_report.last_status_report_id == StatusReportId{} ||
+      first_sender_report_time_ == SenderPacketRouter::kNever) {
+    return;
+  }
+  const Clock::time_point report_time =
       sender_report_builder_.GetRecentReportTime(
           receiver_report.last_status_report_id, rtcp_packet_arrival_time_);
+  constexpr auto kReportIdPrecision = Clock::to_duration(microseconds(32));
+  if (report_time + kReportIdPrecision < first_sender_report_time_) {
+    return;
+  }
+
+  const Clock::duration total_delay = rtcp_packet_arrival_time_ - report_time;
   const auto non_network_delay =
       Clock::to_duration(receiver_report.delay_since_last_report);
 

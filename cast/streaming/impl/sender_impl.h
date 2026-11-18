@@ -225,6 +225,10 @@ class SenderImpl final : public Sender,
   // round trip time has not been measured yet.
   Clock::duration round_trip_time_ = {};
 
+  // Send time of the first Sender Report built by this Sender, or kNever if no
+  // Sender Report has been built yet.
+  Clock::time_point first_sender_report_time_ = SenderPacketRouter::kNever;
+
   // Maintain current stats in a Sender Report that is ready for sending at any
   // time. This includes up-to-date lip-sync information, and packet and byte
   // count stats.
