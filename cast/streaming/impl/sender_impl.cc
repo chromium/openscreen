@@ -142,6 +142,14 @@ Clock::duration SenderImpl::GetMaxInFlightMediaDuration() const {
   if (config_.max_in_flight_media_duration) {
     return config_.max_in_flight_media_duration.value();
   }
+  // Audio frames are small and each one decodes on its own, so an audio Sender
+  // keeps the whole playout delay in flight. The Receiver only gives up on a
+  // frame once its playout deadline has passed, so a shorter window drops new
+  // audio while the oldest frame can still be retransmitted in time.
+  if (config_.stream_type == StreamType::kAudio) {
+    return std::max(kMinSenderInFlight,
+                    Clock::to_duration(target_playout_delay_));
+  }
   // The window limits how much media can wait for an ACK when a new frame is
   // enqueued. With no loss, a frame waits about its send time plus one RTT. A
   // lost packet adds at least one more RTT for the NACK and the retransmit, so

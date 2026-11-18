@@ -940,6 +940,35 @@ TEST_F(SenderTest, EnforcesMinimumInFlightForSmallPlayoutDelays) {
   EXPECT_EQ(kMinSenderInFlight, MaxInFlightForPlayoutDelay(milliseconds(90)));
 }
 
+// Tests that an audio Sender keeps the whole target playout delay in flight,
+// while other streams keep the round-trip based window.
+TEST_F(SenderTest, AudioKeepsWholePlayoutDelayInFlight) {
+  SessionConfig config(kSenderSsrc + 100, kReceiverSsrc + 100, kRtpTimebase, 2,
+                       kTargetPlayoutDelay, kAesKey, kCastIvMask,
+                       /* is_pli_enabled = */ false, StreamType::kAudio);
+  SenderImpl audio_sender(sender_environment_, sender_packet_router_, config,
+                          kRtpPayloadType);
+  EXPECT_EQ(Clock::to_duration(kTargetPlayoutDelay),
+            audio_sender.GetMaxInFlightMediaDuration());
+
+  config.stream_type = StreamType::kVideo;
+  config.sender_ssrc = kSenderSsrc + 200;
+  config.receiver_ssrc = kReceiverSsrc + 200;
+  SenderImpl video_sender(sender_environment_, sender_packet_router_, config,
+                          kRtpPayloadType);
+  EXPECT_EQ(kMinSenderInFlight, video_sender.GetMaxInFlightMediaDuration());
+
+  // The floor still applies to very small playout delays.
+  config.stream_type = StreamType::kAudio;
+  config.target_playout_delay = milliseconds(50);
+  config.sender_ssrc = kSenderSsrc + 300;
+  config.receiver_ssrc = kReceiverSsrc + 300;
+  SenderImpl short_audio_sender(sender_environment_, sender_packet_router_,
+                                config, kRtpPayloadType);
+  EXPECT_EQ(kMinSenderInFlight,
+            short_audio_sender.GetMaxInFlightMediaDuration());
+}
+
 // Converts a media time offset to RTP ticks at the test timebase, truncating.
 constexpr int64_t ToRtpTicks(microseconds media_time) {
   return media_time.count() * kRtpTimebase / 1000000;
@@ -1230,6 +1259,39 @@ TEST_F(SenderTest, RejectsEnqueuingIfTooLongMediaDurationIsInFlight) {
   EXPECT_EQ(Sender::MAX_DURATION_IN_FLIGHT,
             sender()->EnqueueFrame(one_frame_too_much));
   SimulateExecution(kLargeFrameDuration);
+}
+
+// Tests that, while a frame waits for its ACK, an audio Sender keeps accepting
+// 10 ms frames for the whole playout delay instead of stopping at the
+// round-trip based floor.
+TEST_F(SenderTest, AudioAcceptsFramesForWholePlayoutDelayWhileUnacked) {
+  constexpr microseconds kAudioFrameDuration(10000);
+  const auto accepted_frames = [&](StreamType stream_type, Ssrc ssrc_offset) {
+    SessionConfig config(kSenderSsrc + ssrc_offset, kReceiverSsrc + ssrc_offset,
+                         kRtpTimebase, 2, kTargetPlayoutDelay, kAesKey,
+                         kCastIvMask,
+                         /* is_pli_enabled = */ false, stream_type);
+    SenderImpl sender(sender_environment_, sender_packet_router_, config,
+                      kRtpPayloadType);
+    int accepted = 0;
+    for (; accepted < kMaxUnackedFrames; ++accepted) {
+      EncodedFrameWithBuffer frame;
+      PopulateFrameWithDefaults(sender.GetNextFrameId(), FakeClock::now(), 0,
+                                13 /* bytes */, &frame);
+      frame.rtp_timestamp =
+          RtpTimeTicks() +
+          RtpTimeDelta::FromTicks(ToRtpTicks(accepted * kAudioFrameDuration));
+      if (sender.EnqueueFrame(frame) != Sender::OK) {
+        break;
+      }
+    }
+    return accepted;
+  };
+
+  // Nothing is ACKed, so the in-flight duration grows by 10 ms per frame. The
+  // window includes its end, so one more frame than window / 10 ms fits.
+  EXPECT_EQ(41, accepted_frames(StreamType::kAudio, 100));
+  EXPECT_EQ(9, accepted_frames(StreamType::kVideo, 200));
 }
 
 // Tests that the Sender correctly dispatches frame drop events to the
