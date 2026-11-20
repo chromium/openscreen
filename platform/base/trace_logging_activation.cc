@@ -20,17 +20,33 @@ std::atomic<TraceLoggingPlatform*> g_current_destination{};
 // The count of threads currently calling into the current TraceLoggingPlatform.
 std::atomic<int> g_use_count{};
 
+inline void UnpinCurrentDestination() {
+  g_use_count.fetch_sub(1);
+}
+
+// Returns the current destination, or nullptr if tracing is not active. A
+// non-null result is pinned and must be released by calling
+// UnpinCurrentDestination(). A null result is not pinned.
 inline TraceLoggingPlatform* PinCurrentDestination() {
+  // Tracing is usually not active, and every trace macro calls this. Check for
+  // a destination first, so that the common case does not write to
+  // `g_use_count`, which all threads share.
+  if (!g_current_destination.load(std::memory_order_relaxed)) {
+    return nullptr;
+  }
+
   // NOTE: It's important to increment the global use count *before* loading the
   // pointer, to ensure the referent is pinned-down (i.e., any thread executing
   // StopTracing() stays blocked) until CurrentTracingDestination's destructor
   // calls UnpinCurrentDestination().
   g_use_count.fetch_add(1);
-  return g_current_destination.load(std::memory_order_relaxed);
-}
-
-inline void UnpinCurrentDestination() {
-  g_use_count.fetch_sub(1);
+  TraceLoggingPlatform* const destination =
+      g_current_destination.load(std::memory_order_relaxed);
+  if (!destination) {
+    // Tracing stopped after the check above, so there is nothing to pin.
+    UnpinCurrentDestination();
+  }
+  return destination;
 }
 
 }  // namespace
@@ -66,7 +82,10 @@ CurrentTracingDestination::CurrentTracingDestination()
     : destination_(PinCurrentDestination()) {}
 
 CurrentTracingDestination::~CurrentTracingDestination() {
-  UnpinCurrentDestination();
+  // Only a non-null destination is pinned. See PinCurrentDestination().
+  if (destination_) {
+    UnpinCurrentDestination();
+  }
 }
 
 }  // namespace openscreen

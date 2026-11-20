@@ -274,6 +274,7 @@ openscreen_source_set("unittests") {
   sources = [
     "api/runtime_options_unittest.cc",
     "api/time_unittest.cc",
+    "api/trace_logging_platform_unittest.cc",
     "base/error_unittest.cc",
     "base/ip_address_unittest.cc",
     "base/location_unittest.cc",
