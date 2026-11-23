@@ -80,12 +80,16 @@ class SenderImpl final : public Sender,
   static Clock::duration SmoothRoundTripTime(Clock::duration estimate,
                                              Clock::duration measurement);
 
+  // Returns the total heap capacity retained by all `pending_frames_` payload
+  // buffers. Exposed for testing.
+  size_t GetAllocatedSlotBufferBytesForTesting() const;
+
  private:
   // Tracking/Storage for frames that are ready-to-send, and until they are
   // fully received at the other end.
   struct PendingFrameSlot {
-    // The frame to send. Note that this is always set to avoid unnecessary
-    // re-allocations of the underlying buffer. Use is_active_for_frame() to
+    // The encrypted frame to send. Cleared on cancellation so idle slots do not
+    // retain high-water-mark payload allocations. Use is_active_for_frame() to
     // check if it's currently in use for a specific FrameId.
     EncryptedFrame frame;
 
@@ -108,6 +112,15 @@ class SenderImpl final : public Sender,
 
     bool is_active_for_frame(FrameId frame_id) const {
       return !frame.frame_id.is_null() && frame.frame_id == frame_id;
+    }
+
+    // Clears the slot, releasing the heap allocation held by `frame` while
+    // retaining `send_flags` and `packet_sent_times` capacity for reuse.
+    void Reset() {
+      frame = EncryptedFrame();
+      send_flags.Resize(0, BitVector::CLEARED);
+      packet_sent_times.clear();
+      media_duration = Clock::duration::zero();
     }
   };
 

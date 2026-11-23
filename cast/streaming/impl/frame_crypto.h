@@ -29,6 +29,10 @@ struct EncryptedFrame : public EncodedFrame {
   EncryptedFrame(EncryptedFrame&&) noexcept;
   EncryptedFrame& operator=(EncryptedFrame&&);
 
+  size_t owned_data_capacity_for_testing() const {
+    return owned_data_.capacity();
+  }
+
  protected:
   // Since only FrameCrypto is trusted to generate the
   // payload data, it is allowed direct access to the storage.

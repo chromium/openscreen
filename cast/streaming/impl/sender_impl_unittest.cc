@@ -1907,5 +1907,39 @@ TEST_F(SenderTest, ReportsWhetherLastRtpPacketWasRetransmission) {
   EXPECT_TRUE(router_sender->WasLastRtpPacketRetransmission());
 }
 
+TEST_F(SenderTest, ReleasesSlotBuffersOnCancel) {
+  constexpr int kLargePayloadSize = 64 * 1024;
+  EXPECT_EQ(0u, sender()->GetAllocatedSlotBufferBytesForTesting());
+
+  // Enqueue a large keyframe and verify its encrypted buffer is allocated.
+  EncodedFrameWithBuffer frame;
+  PopulateFrameWithDefaults(FrameId::first(), FakeClock::now() - kCaptureDelay,
+                            0, kLargePayloadSize, &frame);
+  ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame));
+  EXPECT_GE(sender()->GetAllocatedSlotBufferBytesForTesting(),
+            static_cast<size_t>(kLargePayloadSize));
+
+  // When the frame is ACKed via checkpoint, the slot's buffer must be freed so
+  // idle slots do not retain high-water-mark keyframe allocations.
+  receiver()->SetCheckpointFrame(FrameId::first());
+  receiver()->TransmitRtcpFeedbackPacket();
+  SimulateExecution(kFrameDuration);
+  EXPECT_EQ(0u, sender()->GetInFlightFrameCount());
+  EXPECT_EQ(0u, sender()->GetAllocatedSlotBufferBytesForTesting());
+
+  // Also verify CancelInFlightData() releases buffers without an ACK.
+  EncodedFrameWithBuffer frame2;
+  PopulateFrameWithDefaults(FrameId::first() + 1,
+                            FakeClock::now() - kCaptureDelay, 1,
+                            kLargePayloadSize, &frame2);
+  ASSERT_EQ(Sender::OK, sender()->EnqueueFrame(frame2));
+  EXPECT_GE(sender()->GetAllocatedSlotBufferBytesForTesting(),
+            static_cast<size_t>(kLargePayloadSize));
+
+  sender()->CancelInFlightData();
+  EXPECT_EQ(0u, sender()->GetInFlightFrameCount());
+  EXPECT_EQ(0u, sender()->GetAllocatedSlotBufferBytesForTesting());
+}
+
 }  // namespace
 }  // namespace openscreen::cast

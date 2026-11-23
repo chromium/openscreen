@@ -240,7 +240,7 @@ openscreen::cast::Sender::EnqueueFrameResult SenderImpl::EnqueueFrame(
   crypto_.Encrypt(frame, slot.frame);
   const int packet_count = rtp_packetizer_.ComputeNumberOfPackets(slot.frame);
   if (packet_count <= 0) {
-    slot.frame.frame_id = FrameId();
+    slot.Reset();
     return PAYLOAD_TOO_LARGE;
   }
   slot.send_flags.Resize(packet_count, BitVector::SET);
@@ -845,9 +845,8 @@ void SenderImpl::CancelPendingFrame(FrameId frame_id, bool was_acked) {
   }
 
   in_flight_media_duration_ -= slot.media_duration;
-  slot.media_duration = Clock::duration::zero();
   OSP_CHECK_GE(in_flight_media_duration_, Clock::duration::zero());
-  slot.frame.frame_id = FrameId();
+  slot.Reset();
   OSP_CHECK_GT(num_frames_in_flight_, 0);
   --num_frames_in_flight_;
   if (num_frames_in_flight_ == 0) {
@@ -875,5 +874,13 @@ void SenderImpl::DispatchCancellations() {
 
 SenderImpl::PendingFrameSlot::PendingFrameSlot() = default;
 SenderImpl::PendingFrameSlot::~PendingFrameSlot() = default;
+
+size_t SenderImpl::GetAllocatedSlotBufferBytesForTesting() const {
+  size_t total_bytes = 0;
+  for (const PendingFrameSlot& slot : pending_frames_) {
+    total_bytes += slot.frame.owned_data_capacity_for_testing();
+  }
+  return total_bytes;
+}
 
 }  // namespace openscreen::cast
