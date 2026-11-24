@@ -408,7 +408,7 @@ ErrorOr<UdpPacket> ReceiveMessageInternal(int fd) {
   // it's not a fatal error, we will just allocate kMaxUdpBufferSize
   // and shrink-to-fit below.
   int upper_bound_bytes = -1;
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_ANDROID)
   // Returns the exact size of the datagram, or -1 on error.
   upper_bound_bytes = recv(fd, nullptr, 0, MSG_PEEK | MSG_TRUNC);
 #elif BUILDFLAG(IS_APPLE)
@@ -420,7 +420,7 @@ ErrorOr<UdpPacket> ReceiveMessageInternal(int fd) {
   if (getsockopt(fd, SOL_SOCKET, SO_NREAD, &upper_bound_bytes, &optlen) == -1) {
     upper_bound_bytes = -1;
   }
-#endif  // BUILDFLAG(IS_LINUX)
+#endif
   if (upper_bound_bytes > 0) {
     upper_bound_bytes = std::min(upper_bound_bytes, kMaxUdpBufferSize);
   } else {
