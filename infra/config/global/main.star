@@ -95,6 +95,11 @@ chromium_luci.configure_per_builder_outputs(
     root_dir = "builders",
 )
 
+chromium_luci.configure_builders(
+    builder_group_reuse_bucket_allowlist = ["try"],
+    os_dimension_overrides = {},
+)
+
 chromium_luci.configure_builder_health_indicators(
     unhealthy_period_days = 7,
     pending_time_p50_min = 20,
@@ -184,6 +189,12 @@ luci.bucket(
                 "project-openscreen-tryjob-access",
             ],
         ),
+        # Allow led runs in try.shadow to create ResultDB invocations for
+        # local gtest steps.
+        luci.binding(
+            roles = "role/resultdb.invocationCreator",
+            users = "openscreen-try-builder@chops-service-accounts.iam.gserviceaccount.com",
+        ),
     ],
     dynamic = True,
 )
@@ -220,6 +231,16 @@ luci.bucket(
             groups = [
                 "mdb/chrome-build-access-sphinx",
                 "project-openscreen-tryjob-access",
+            ],
+        ),
+        # Allow led runs in ci.shadow to create ResultDB invocations for
+        # local gtest steps (CI builders use the try service account in
+        # shadow builds).
+        luci.binding(
+            roles = "role/resultdb.invocationCreator",
+            users = [
+                "openscreen-ci-builder@chops-service-accounts.iam.gserviceaccount.com",
+                "openscreen-try-builder@chops-service-accounts.iam.gserviceaccount.com",
             ],
         ),
     ],
@@ -646,7 +667,7 @@ def chromium_try_and_ci_builders(
     try_.builder(
         bucket = "try",
         pool = "luci.flex.try",
-        builder_group = "tryserver.openscreen.chromium",
+        builder_group = "client.openscreen.chromium",
         service_account = "openscreen-try-builder@chops-service-accounts.iam.gserviceaccount.com",
         siso_project = _siso.project.DEFAULT_UNTRUSTED,
         mirrors = ["ci/" + name],
