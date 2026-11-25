@@ -24,14 +24,6 @@ constexpr bool AreElementsSortedAndUnique(const R& c) {
              std::ranges::cend(c);
 }
 
-// Sorts elements and removes duplicates in-place.
-template <std::ranges::random_access_range R>
-void SortAndDedupeElements(R& c) {
-  std::ranges::sort(c);
-  const auto [first, last] = std::ranges::unique(c);
-  c.erase(first, last);
-}
-
 // Append the provided elements together into a single vector using fold
 // expressions.
 template <typename T, typename... TOthers>

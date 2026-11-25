@@ -90,32 +90,12 @@ constexpr Char ascii_tolower(Char c) {
   return (c >= 'A' && c <= 'Z') ? static_cast<Char>(c + ('a' - 'A')) : c;
 }
 
-// If `c` is a lower case ASCII character, returns its upper case equivalent.
-// Otherwise, returns `c` unchanged.
-template <typename Char>
-  requires(std::integral<Char>)
-constexpr Char ascii_toupper(Char c) {
-  return (c >= 'a' && c <= 'z') ? static_cast<Char>(c - ('a' - 'A')) : c;
-}
-
-// Converts `s` to lowercase in-place.
-inline void AsciiStrToLower(std::string& s) {
-  for (char& c : s) {
-    c = ascii_tolower(c);
-  }
-}
-
-// Creates a lowercase string from a given string_view.
-[[nodiscard]] inline std::string AsciiStrToLower(std::string_view s) {
-  std::string result(s);
-  AsciiStrToLower(result);
-  return result;
-}
-
 // Converts `s` to uppercase in-place.
 inline void AsciiStrToUpper(std::string& s) {
   for (char& c : s) {
-    c = ascii_toupper(c);
+    if (c >= 'a' && c <= 'z') {
+      c = static_cast<char>(c - ('a' - 'A'));
+    }
   }
 }
 
@@ -145,49 +125,6 @@ inline void AsciiStrToUpper(std::string& s) {
   return str;
 }
 
-// Returns std::string_view with whitespace stripped from the end of the
-// given string_view.
-[[nodiscard]] constexpr std::string_view StripTrailingAsciiWhitespace(
-    std::string_view str) {
-  while (!str.empty() && ascii_isspace(str.back())) {
-    str.remove_suffix(1);
-  }
-  return str;
-}
-
-// Returns std::string_view with whitespace stripped from both ends of the
-// given string_view.
-[[nodiscard]] constexpr std::string_view StripAsciiWhitespace(
-    std::string_view str) {
-  return StripTrailingAsciiWhitespace(StripLeadingAsciiWhitespace(str));
-}
-
-// Removes all ASCII whitespace from `s` in-place.
-inline std::string& RemoveWhitespace(std::string& s) {
-  std::erase_if(s, [](char c) { return ascii_isspace(c); });
-  return s;
-}
-
-// Appends string pieces into an existing destination string.
-inline void StrAppend(std::string& dest,
-                      std::initializer_list<std::string_view> pieces) {
-  size_t additional_length = 0;
-  for (const auto& piece : pieces) {
-    additional_length += piece.size();
-  }
-  dest.reserve(dest.size() + additional_length);
-  for (const auto& piece : pieces) {
-    dest.append(piece);
-  }
-}
-
-template <typename... Args>
-  requires(sizeof...(Args) > 0 &&
-           (std::convertible_to<Args, std::string_view> && ...))
-inline void StrAppend(std::string& dest, const Args&... args) {
-  StrAppend(dest, {std::string_view(args)...});
-}
-
 // Concatenates arguments into a single string.
 [[nodiscard]] constexpr std::string StrCat(
     std::initializer_list<std::string_view> pieces) {
@@ -211,20 +148,11 @@ template <typename... Args>
   return StrCat({std::string_view(args)...});
 }
 
-enum class SplitResult {
-  kDiscardEmpty,
-  kKeepEmpty,
-};
-
-// Splits `value` into tokens separated by `delim`.
-// When `result_type` is `kDiscardEmpty` (default), leading and trailing
+// Splits `value` into tokens separated by `delim`. Leading and trailing
 // delimiters are stripped, and multiple consecutive delimiters are treated as
-// one. When `result_type` is `kKeepEmpty`, all delimiters are preserved,
-// including empty tokens.
-[[nodiscard]] inline std::vector<std::string_view> Split(
-    std::string_view value,
-    char delim,
-    SplitResult result_type = SplitResult::kDiscardEmpty) {
+// one.
+[[nodiscard]] inline std::vector<std::string_view> Split(std::string_view value,
+                                                         char delim) {
   std::vector<std::string_view> tokens;
   if (value.empty()) {
     return tokens;
@@ -235,13 +163,13 @@ enum class SplitResult {
     size_t end = value.find(delim, start);
     if (end == std::string_view::npos) {
       std::string_view token = value.substr(start);
-      if (result_type == SplitResult::kKeepEmpty || !token.empty()) {
+      if (!token.empty()) {
         tokens.push_back(token);
       }
       break;
     }
     std::string_view token = value.substr(start, end - start);
-    if (result_type == SplitResult::kKeepEmpty || !token.empty()) {
+    if (!token.empty()) {
       tokens.push_back(token);
     }
     start = end + 1;
@@ -255,18 +183,6 @@ enum class SplitResult {
     std::pair<std::string_view, std::string_view>>
 SplitFirst(std::string_view value, char delim) {
   size_t pos = value.find(delim);
-  if (pos == std::string_view::npos) {
-    return std::nullopt;
-  }
-  return std::pair{value.substr(0, pos), value.substr(pos + 1)};
-}
-
-// Splits a string at the last instance of `delim`. Returns std::nullopt if
-// `delim` is not found.
-[[nodiscard]] constexpr std::optional<
-    std::pair<std::string_view, std::string_view>>
-SplitLast(std::string_view value, char delim) {
-  size_t pos = value.rfind(delim);
   if (pos == std::string_view::npos) {
     return std::nullopt;
   }

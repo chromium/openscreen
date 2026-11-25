@@ -35,33 +35,6 @@ constexpr Integer DividePositivesRoundingUp(Integer num, Integer denom) {
                                                                       denom);
 }
 
-// Divides `num` by `denom`, and rounds to the nearest integer (exactly halfway
-// between integers will round to the higher integer). This function is
-// compatible with any integer-like type, including the integer-based
-// std::chrono duration types.
-//
-// Optimization note: See DividePositivesRoundingNearest().
-template <typename Integer>
-constexpr auto DivideRoundingNearest(Integer num, Integer denom) {
-  if (denom < Integer{0}) {
-    num *= -1;
-    denom *= -1;
-  }
-  if (num < Integer{0}) {
-    return (num - ((denom - Integer{1}) / 2)) / denom;
-  }
-  return (num + (denom / 2)) / denom;
-}
-
-// Same as DivideRoundingNearest(), except is more-efficient for hot code paths
-// that know `num` is always greater or equal to zero, and `denom` is always
-// greater than zero.
-template <typename Integer>
-constexpr Integer DividePositivesRoundingNearest(Integer num, Integer denom) {
-  return DivideRoundingNearest<typename std::make_unsigned<Integer>::type>(
-      num, denom);
-}
-
 }  // namespace openscreen
 
 #endif  // UTIL_INTEGER_DIVISION_H_

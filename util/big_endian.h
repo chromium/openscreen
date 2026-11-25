@@ -17,7 +17,6 @@
 
 #include "platform/base/span.h"
 #include "util/osp_logging.h"
-#include "util/raw_ptr.h"
 
 namespace openscreen {
 
@@ -124,34 +123,6 @@ inline void WriteBigEndian(Integer val, void* dest) {
 template <class T>
 class BigEndianBuffer {
  public:
-  class Cursor {
-   public:
-    explicit Cursor(BigEndianBuffer* buffer)
-        : buffer_(buffer), origin_offset_(buffer_->offset()) {}
-    Cursor(const Cursor& other) = delete;
-    Cursor(Cursor&& other) noexcept = delete;
-    ~Cursor() { buffer_->set_offset(origin_offset_); }
-
-    Cursor& operator=(const Cursor& other) = delete;
-    Cursor& operator=(Cursor&& other) noexcept = delete;
-
-    void Commit() { origin_offset_ = buffer_->offset(); }
-
-    size_t origin_offset() const { return origin_offset_; }
-    T* origin() const { return buffer_->begin() + origin_offset_; }
-    Span<T> origin_span() const {
-      return buffer_->buffer().subspan(origin_offset_);
-    }
-    size_t delta() const { return buffer_->offset() - origin_offset_; }
-    Span<T> delta_span() const {
-      return buffer_->buffer().subspan(origin_offset_, delta());
-    }
-
-   private:
-    raw_ptr<BigEndianBuffer<T>> buffer_;
-    size_t origin_offset_;
-  };
-
   bool Skip(size_t length) {
     if (length > remaining()) {
       return false;
@@ -162,11 +133,9 @@ class BigEndianBuffer {
 
   Span<T> buffer() const { return buffer_; }
   Span<T> remaining_span() const { return buffer_.subspan(offset_); }
-  Span<T> written_span() const { return buffer_.first(offset_); }
   // TODO(crbug.com/520101123): Remove unsafe raw pointer methods once
   // MdnsReader and MdnsWriter are fully spanified in follow-up CLs.
   T* begin() const { return buffer_.data(); }
-  T* current() const { return buffer_.data() + offset_; }
   T* end() const { return buffer_.data() + buffer_.size(); }
   size_t length() const { return buffer_.size(); }
   size_t remaining() const { return buffer_.size() - offset_; }
@@ -177,9 +146,6 @@ class BigEndianBuffer {
   BigEndianBuffer(T* buffer, size_t length) : buffer_(buffer, length) {}
   BigEndianBuffer(const BigEndianBuffer&) = delete;
   BigEndianBuffer& operator=(const BigEndianBuffer&) = delete;
-
- protected:
-  void set_offset(size_t offset) { offset_ = offset; }
 
  private:
   Span<T> buffer_;

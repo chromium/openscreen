@@ -32,20 +32,13 @@ static_assert(ascii_isspace('\r'));
 static_assert(!ascii_isspace('a'));
 static_assert(ascii_tolower('A') == 'a');
 static_assert(ascii_tolower('a') == 'a');
-static_assert(ascii_toupper('a') == 'A');
-static_assert(ascii_toupper('A') == 'A');
 static_assert(EqualsIgnoreCase("", ""));
 static_assert(EqualsIgnoreCase("abc", "ABC"));
 static_assert(!EqualsIgnoreCase("abc", "ABCD"));
 static_assert(StripLeadingAsciiWhitespace("  abc") == "abc");
-static_assert(StripTrailingAsciiWhitespace("abc  ") == "abc");
-static_assert(StripAsciiWhitespace("  abc  ") == "abc");
 static_assert(SplitFirst("key=value", '=').value() ==
               std::pair<std::string_view, std::string_view>{"key", "value"});
 static_assert(!SplitFirst("novalue", '=').has_value());
-static_assert(SplitLast("a.b.c", '.').value() ==
-              std::pair<std::string_view, std::string_view>{"a.b", "c"});
-static_assert(!SplitLast("nodot", '.').has_value());
 
 // Reference: https://ascii-code.com
 TEST(StringUtilTest, AsciiTest) {
@@ -81,9 +74,6 @@ TEST(StringUtilTest, AsciiTest) {
   EXPECT_EQ(ascii_tolower('A'), 'a');
   EXPECT_EQ(ascii_tolower('a'), 'a');
   EXPECT_EQ(ascii_tolower('0'), '0');
-  EXPECT_EQ(ascii_toupper('A'), 'A');
-  EXPECT_EQ(ascii_toupper('a'), 'A');
-  EXPECT_EQ(ascii_toupper('0'), '0');
 }
 
 TEST(StringUtilTest, EqualsIgnoreCase) {
@@ -96,38 +86,21 @@ TEST(StringUtilTest, EqualsIgnoreCase) {
   EXPECT_FALSE(EqualsIgnoreCase("vUlKaNs!", kString));
 }
 
-TEST(StringUtilTest, AsciiStrToUpperLower) {
+TEST(StringUtilTest, AsciiStrToUpper) {
   constexpr char kString[] = "Vulcans!";
   EXPECT_EQ("", AsciiStrToUpper(""));
-  EXPECT_EQ("", AsciiStrToLower(""));
 
   EXPECT_EQ("VULCANS!", AsciiStrToUpper("Vulcans!"));
   std::string s1(kString);
   AsciiStrToUpper(s1);
   EXPECT_EQ("VULCANS!", s1);
-
-  EXPECT_EQ("vulcans!", AsciiStrToLower("Vulcans!"));
-  std::string s2(kString);
-  AsciiStrToLower(s2);
-  EXPECT_EQ("vulcans!", s2);
 }
 
-TEST(StringUtilTest, StripAsciiWhitespace) {
+TEST(StringUtilTest, StripLeadingAsciiWhitespace) {
   EXPECT_EQ("", StripLeadingAsciiWhitespace(""));
   EXPECT_EQ("", StripLeadingAsciiWhitespace("   \t\r\n "));
   EXPECT_EQ("abc", StripLeadingAsciiWhitespace("abc"));
   EXPECT_EQ("abc  ", StripLeadingAsciiWhitespace("  abc  "));
-
-  EXPECT_EQ("", StripTrailingAsciiWhitespace(""));
-  EXPECT_EQ("", StripTrailingAsciiWhitespace("   \t\r\n "));
-  EXPECT_EQ("abc", StripTrailingAsciiWhitespace("abc"));
-  EXPECT_EQ("  abc", StripTrailingAsciiWhitespace("  abc  "));
-
-  EXPECT_EQ("", StripAsciiWhitespace(""));
-  EXPECT_EQ("", StripAsciiWhitespace("   \t\r\n "));
-  EXPECT_EQ("abc", StripAsciiWhitespace("abc"));
-  EXPECT_EQ("abc", StripAsciiWhitespace("  abc  "));
-  EXPECT_EQ("a b c", StripAsciiWhitespace(" \t a b c \r\n "));
 }
 
 TEST(StringUtilTest, StrCat) {
@@ -140,15 +113,6 @@ TEST(StringUtilTest, StrCat) {
   EXPECT_EQ("123456", StrCat("1", "2", "3", "4", "5", "6"));
   EXPECT_EQ("hello world",
             StrCat(std::string("hello"), " ", std::string_view("world")));
-}
-
-TEST(StringUtilTest, StrAppend) {
-  std::string dest = "hello";
-  StrAppend(dest, {" ", "world"});
-  EXPECT_EQ("hello world", dest);
-
-  StrAppend(dest, "!", "!!");
-  EXPECT_EQ("hello world!!!", dest);
 }
 
 TEST(StringUtilTest, Split) {
@@ -173,12 +137,6 @@ TEST(StringUtilTest, Split) {
   EXPECT_EQ(result, expected);
   result = Split(";;;a;;b;;;ccc;;;;", ';');
   EXPECT_EQ(result, expected);
-
-  // Split with SplitResult::kKeepEmpty.
-  EXPECT_EQ((std::vector<std::string_view>{"a", "", "b", "", "", "c"}),
-            Split("a;;b;;;c", ';', SplitResult::kKeepEmpty));
-  EXPECT_EQ((std::vector<std::string_view>{"", "a", "b", ""}),
-            Split(";a;b;", ';', SplitResult::kKeepEmpty));
 }
 
 TEST(StringUtilTest, SplitFirst) {
@@ -191,18 +149,6 @@ TEST(StringUtilTest, SplitFirst) {
   EXPECT_EQ((std::pair<std::string_view, std::string_view>{"foo", ""}),
             SplitFirst("foo=", '='));
   EXPECT_FALSE(SplitFirst("foobar", '=').has_value());
-}
-
-TEST(StringUtilTest, SplitLast) {
-  EXPECT_EQ((std::pair<std::string_view, std::string_view>{"foo", "bar"}),
-            SplitLast("foo=bar", '='));
-  EXPECT_EQ((std::pair<std::string_view, std::string_view>{"foo=bar", "baz"}),
-            SplitLast("foo=bar=baz", '='));
-  EXPECT_EQ((std::pair<std::string_view, std::string_view>{"", "bar"}),
-            SplitLast("=bar", '='));
-  EXPECT_EQ((std::pair<std::string_view, std::string_view>{"foo", ""}),
-            SplitLast("foo=", '='));
-  EXPECT_FALSE(SplitLast("foobar", '=').has_value());
 }
 
 TEST(StringUtilTest, JoinStringViewCollection) {

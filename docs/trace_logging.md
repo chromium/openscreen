@@ -75,15 +75,9 @@ convention.
 ## Trace Results
 
 The "result" of a trace is meant to indicate whether the traced function
-completed successfully or not. Results are handled differently for synchronous
-and asynchronous traces.
-
-For scoped traces, the trace is by default assumed to be successful. If an error
-state is desired, this should be set using `TRACE_SET_RESULT(result)` where
-result is some Error::Code enum value.
-
-For asynchronous calls, the result must be set as part of the `TRACE_ASYNC_END`
-call. As with scoped traces, the result must be some Error::Code enum value.
+completed successfully or not. For scoped traces, the trace is by default
+assumed to be successful. If an error state is desired, this should be set using
+`TRACE_SET_RESULT(result)` where `result` is some `Error::Code` enum value.
 
 ## Tracing Functions
 
@@ -120,7 +114,7 @@ name.
 
 #### Tracing with Arguments
 
-Both synchronous and asynchronous tracing can also be done with either one or two arguments provided
+Synchronous tracing can also be done with either one or two arguments provided
 as strings.
 
 ```c++
@@ -139,82 +133,19 @@ TRACE_DEFAULT_SCOPED2(category, argname, argval, argname_two, argval_two, traceI
 TRACE_DEFAULT_SCOPED2(category, argname, argval, argname_two, argval_two, traceIdHierarchy)
 ```
 
-### Asynchronous Tracing
-
-#### Tracing an Asynchronous Function or Task
-
-```c++
-TRACE_ASYNC_START(category, name)
-TRACE_ASYNC_START1(category, name, argname, argval)
-TRACE_ASYNC_START2(category, name, argname, argval, argname_two, argval_two)
-```
-
-If logging is enabled for the provided category, these functions will initiate
-a new asynchronous function trace with name as provided. It will not end
-until `TRACE_ASYNC_END` is called with the same Trace ID generated for this
-async trace. When these calls are used, the Trace ID Hierarchy will be
-determined automatically and the caller does not need to worry about it and,
-as such, **these calls should be used in the majority of asynchronous tracing
-cases**.
-
-#### Tracing with Explicit, Parameterized Hierarchy
-
-```c++
-TRACE_ASYNC_START(category, name)
-TRACE_ASYNC_START1(category, name, argname, argval, traceId, parentId, rootId)
-TRACE_ASYNC_START2(category, name, argname, argval, argname_two, argval_two, traceId, parentId, rootId)
-```
-
-If logging is enabled for the provided category, these versions of the start macros
-will initiate a new asynchronous function trace with name and full trace ID Hierarchy as
-provided. It will not end until `TRACE_ASYNC_END` is called with the same
-Trace ID provided for this async trace. Each of trace ID, parent ID, and
-root ID is optional, so providing only a subset of these values is also
-valid if the caller only desires to set specific ones.
-
-#### Tracing with the `TRACE_HIERARCHY` Macro
-
-```c++
-TRACE_ASYNC_START(category, name, traceIdHierarchy)
-TRACE_ASYNC_START1(category, name, argname, argval, traceIdHierarchy)
-TRACE_ASYNC_START2(category, name, argname, argval, argname_two, argval_two, traceIdHierarchy)
-```
-
-This version of the start macro is intended for use in conjunction with the `TRACE_HIERARCHY` macro
-(as described below). These versions of the start macro will initiate a new asynchronous
-function trace with name and full Trace ID Hierarchy as provided. It will
-not end until `TRACE_ASYNC_END` is called with the same Trace ID provided for
-this async trace.
-
-
-#### Ending an Asynchronous Trace
-
-```c++
-TRACE_ASYNC_END(category, id, result)
-```
-
-This call will end a trace initiated by `TRACE_ASYNC_START` (as described
-above) if logging is enabled for the associated category. The id is expected
-to match that used by an `TRACE_ASYNC_START` call, and result is the same as
-`TRACE_SET_RESULT`'s argument.
-
 ### Flow Tracing
 
 Flow events are used to connect trace events across different threads, processes,
 or even machines. They share a `flow_id` which links them together visually in
 trace viewers (like Perfetto).
 
-#### Flow Macros: `TRACE_FLOW_BEGIN`, `TRACE_FLOW_STEP`, `TRACE_FLOW_END`
+#### Flow Macro: `TRACE_FLOW_STEP`
 
 ```c++
-TRACE_FLOW_BEGIN(category, name, flow_id)
 TRACE_FLOW_STEP(category, name, flow_id)
-TRACE_FLOW_END(category, name, flow_id)
 ```
 
-* `TRACE_FLOW_BEGIN`: Marks the start of a flow.
 * `TRACE_FLOW_STEP`: Marks an intermediate step in the flow.
-* `TRACE_FLOW_END`: Marks the end of the flow.
 
 The `flow_id` can be an integer, a `FrameId`, or any type that is convertible to
 `uint64_t` or has a `.value()` method returning a numeric type that is castable
@@ -233,18 +164,7 @@ TRACE_FLOW_END_WITH_TIME(category, name, flow_id, timestamp)
 
 * `timestamp`: A `Clock::time_point` representing when the event occurred.
 
-#### Default Flow Macros
-
-```c++
-TRACE_FLOW_DEFAULT_BEGIN(category, flow_id)
-TRACE_FLOW_DEFAULT_STEP(category, flow_id)
-TRACE_FLOW_DEFAULT_END(category, flow_id)
-```
-
-These macros behave identically to the ones above but automatically use the
-current function name (`__PRETTY_FUNCTION__`) as the flow event name.
-
-For an example usage of flows for on tracking video/audio frame lifecycles, see
+For an example usage of flows for tracking video/audio frame lifecycles, see
 [Frame Flow Tracing](../cast/docs/frame_flow_tracing.md).
 
 ### Other Tracing Macros
@@ -252,10 +172,6 @@ For an example usage of flows for on tracking video/audio frame lifecycles, see
 #### `TRACE_CURRENT_ID`
 
 This macro returns the current Trace ID at this point in time.
-
-#### `TRACE_ROOT_ID`
-
-This macro returns the root Trace ID at this point in time.
 
 #### `TRACE_HIERARCHY`
 
@@ -288,37 +204,6 @@ Synchronous Tracing:
       // A trace log is generated when the scope containing the above call ends.
 
       TRACE_SET_RESULT(Error::Code::kNone);
-    }
-```
-
-Asynchronous tracing with known Trace ID (recommended):
-This approach allows for asynchronous tracing when the function being traced can
-be associated with a known Trace ID. For instance, a packet ID, a request ID, or
-another ID which will live for the duration of the trace but will not need to be
-passed around separately.
-
-``` c++
-    public void DoThingsStart() {
-      TRACE_ASYNC_START(category, "DoThings", kKnownId);
-    }
-
-    public void DoThingsEnd() {
-      TRACE_ASYNC_END(category, kKnownId, Error::Code::kNone);
-    }
-```
-
-Asynchronous tracing with unknown Trace ID (not recommended):
-This approach allows for asynchronous tracing even when no existing ID can be
-associated with the trace.
-
-``` c++
-    public TraceId DoThingsStart() {
-      TRACE_ASYNC_START(category, "DoThings");
-      return TRACE_CURRENT_ID;
-    }
-
-    public void DoThingsEnd(TraceId trace_id) {
-      TRACE_ASYNC_END(category, trace_id, Error::Code::kNone);
     }
 ```
 

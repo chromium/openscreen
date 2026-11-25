@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "util/string_util.h"
 
 namespace openscreen {
 
@@ -24,15 +23,6 @@ TEST(StdUtilTest, Data) {
   EXPECT_EQ(data(empty), empty.data());
 }
 
-TEST(StdUtilTest, RemoveWhitespace) {
-  std::string portland = "Portland";
-  EXPECT_EQ("Portland", RemoveWhitespace(portland));
-
-  std::string fancy_portland = "  Po\f\v\tr\t\ntla  n\r\nd\t\t  ";
-  RemoveWhitespace(fancy_portland);
-  EXPECT_EQ("Portland", fancy_portland);
-}
-
 TEST(StdUtilTest, AreElementSortedAndUnique) {
   EXPECT_TRUE(AreElementsSortedAndUnique(std::vector<std::string>({})));
   EXPECT_TRUE(AreElementsSortedAndUnique(std::vector<std::string>({"Joey"})));
@@ -42,28 +32,6 @@ TEST(StdUtilTest, AreElementSortedAndUnique) {
       std::vector<std::string>({"Chandler", "Joey", "Joey", "Phoebe"})));
   EXPECT_FALSE(AreElementsSortedAndUnique(
       std::vector<std::string>({"Chandler", "Phoebe", "Joey"})));
-}
-
-TEST(StdUtilTest, SortAndDedupeElements) {
-  auto empty_vector = std::vector<std::string>({});
-  SortAndDedupeElements(empty_vector);
-  EXPECT_TRUE(empty_vector.empty());
-
-  auto singleton_vector = std::vector<std::string>({"Joey"});
-  SortAndDedupeElements(singleton_vector);
-  EXPECT_EQ(singleton_vector, std::vector<std::string>({"Joey"}));
-
-  auto all_friends =
-      std::vector<std::string>({"Joey", "Rachel", "Monica", "Chandler",
-                                "Phoebe", "Ross", "Rachel", "Joey"});
-  SortAndDedupeElements(all_friends);
-  EXPECT_EQ(all_friends,
-            std::vector<std::string>(
-                {"Chandler", "Joey", "Monica", "Phoebe", "Rachel", "Ross"}));
-
-  std::vector<int> nums = {5, 2, 8, 2, 5, 1};
-  SortAndDedupeElements(nums);
-  EXPECT_EQ(nums, (std::vector<int>{1, 2, 5, 8}));
 }
 
 TEST(StdUtilTest, Append) {

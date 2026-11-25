@@ -16,7 +16,6 @@
 
 #include "platform/api/time.h"
 #include "platform/base/error.h"
-#include "util/crypto/rsa_private_key.h"
 
 namespace openscreen {
 

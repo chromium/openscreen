@@ -19,10 +19,8 @@ namespace openscreen {
 // multiple times.
 // This function is thread-safe, and OpenSSL will only ever be initialized once.
 // OpenSSL will be properly shut down on program exit.
-// Multiple sequential calls to EnsureOpenSSLInit or EnsureOpenSSLCleanup are
-// ignored by OpenSSL itself.
+// Multiple sequential calls to EnsureOpenSSLInit are ignored by OpenSSL itself.
 void EnsureOpenSSLInit();
-void EnsureOpenSSLCleanup();
 
 // Drains the OpenSSL ERR_get_error stack. On a debug build the error codes
 // are send to VLOG(1), on a release build they are disregarded. In most
@@ -38,28 +36,6 @@ Error SSLErrorCodeToError(int error_code);
 // SSL_get_error to determine the SSL error code, which is then converted to an
 // Error using SSLErrorCodeToError().
 Error GetSSLError(const SSL* ssl, int return_code);
-
-// Place an instance of this class on the call stack to automatically clear
-// the OpenSSL error stack on function exit.
-class OpenSSLErrStackTracer {
- public:
-  // Pass CURRENT_LOCATION as `location`, to help track the source of OpenSSL
-  // error messages. Note any diagnostic emitted will be tagged with the
-  // location of the constructor call as it's not possible to trace a
-  // destructor's callsite.
-  explicit OpenSSLErrStackTracer(const Location& location)
-      : location_(location) {
-    EnsureOpenSSLInit();
-  }
-  OpenSSLErrStackTracer(const OpenSSLErrStackTracer&) = delete;
-  OpenSSLErrStackTracer(OpenSSLErrStackTracer&&) noexcept = delete;
-  OpenSSLErrStackTracer& operator=(const OpenSSLErrStackTracer&) = delete;
-  OpenSSLErrStackTracer& operator=(OpenSSLErrStackTracer&&) = delete;
-  ~OpenSSLErrStackTracer() { ClearOpenSSLERRStack(location_); }
-
- private:
-  const Location location_;
-};
 
 }  // namespace openscreen
 

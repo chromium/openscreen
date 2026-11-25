@@ -187,10 +187,6 @@ class TraceIdSetter final : public ScopedTraceOperation {
   TraceIdSetter& operator=(TraceIdSetter&&) = delete;
   ~TraceIdSetter() final;
 
-  // Creates a new TraceIdSetter to set the full TraceId Hierarchy to default
-  // values and does not push it to the traces stack.
-  static TraceIdSetter* CreateStackRootNode();
-
  private:
   // Implement abstract method for use in Macros.
   void SetTraceResult(Error::Code error) {}

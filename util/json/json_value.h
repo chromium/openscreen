@@ -45,12 +45,6 @@ enum class ValueType {
   objectValue = kObject,
 };
 
-inline constexpr ValueType nullValue = ValueType::kNull;
-inline constexpr ValueType intValue = ValueType::kInt;
-inline constexpr ValueType uintValue = ValueType::kUInt;
-inline constexpr ValueType realValue = ValueType::kReal;
-inline constexpr ValueType stringValue = ValueType::kString;
-inline constexpr ValueType booleanValue = ValueType::kBoolean;
 inline constexpr ValueType arrayValue = ValueType::kArray;
 inline constexpr ValueType objectValue = ValueType::kObject;
 
@@ -176,12 +170,8 @@ class Value {
   bool isNull() const;
   bool isBool() const;
   bool isInt() const;
-  bool isInt64() const;
   bool isUInt() const;
-  bool isUInt64() const;
-  bool isIntegral() const;
   bool isDouble() const;
-  bool isNumeric() const;
   bool isString() const;
   bool isArray() const;
   bool isObject() const;
@@ -197,18 +187,6 @@ class Value {
   double asDouble() const;
   std::string asString() const;
   bool getString(const char** begin, const char** end) const;
-
-  // Accessors for untrusted input. These never abort. The integer accessors
-  // return a value only when the matching isX() is true, GetIfDouble() only
-  // for numbers, GetIfBool() only for booleans, and GetIfString() only for
-  // strings. The string_view returned by GetIfString() points into this value.
-  std::optional<int> GetIfInt() const;
-  std::optional<unsigned int> GetIfUInt() const;
-  std::optional<int64_t> GetIfInt64() const;
-  std::optional<uint64_t> GetIfUInt64() const;
-  std::optional<double> GetIfDouble() const;
-  std::optional<bool> GetIfBool() const;
-  std::optional<std::string_view> GetIfString() const;
 
   // Array / Object indexing. The non-const overloads turn a null value into an
   // array or object, insert missing elements, and abort on any other type. The
@@ -260,6 +238,9 @@ class Value {
   friend std::ostream& operator<<(std::ostream& os, const Value& val);
 
  private:
+  bool isInt64() const;
+  bool isUInt64() const;
+  bool isNumeric() const;
   bool EqualsJsonCpp(const ::Json::Value& other) const;
 
   using Storage = std::variant<std::monostate,

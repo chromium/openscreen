@@ -12,48 +12,9 @@
 
 #include "util/big_endian.h"
 #include "util/crypto/random_bytes.h"
-#include "util/hashing.h"
 #include "util/osp_logging.h"
-#include "util/string_util.h"
 
 namespace openscreen {
-
-namespace {
-
-constexpr bool IsHyphenPosition(size_t i) {
-  return i == 8 || i == 13 || i == 18 || i == 23;
-}
-
-// Returns a canonical Uuid string given that `input` is validly formatted
-// xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx, such that x is a hexadecimal digit.
-// If `strict`, x must be a lower-case hexadecimal digit.
-std::string GetCanonicalUuidInternal(std::string_view input, bool strict) {
-  constexpr size_t kUuidLength = 36;
-  if (input.length() != kUuidLength) {
-    return {};
-  }
-
-  std::string lowercase;
-  lowercase.resize(kUuidLength);
-  for (size_t i = 0; i < input.length(); ++i) {
-    auto current = input[i];
-    if (IsHyphenPosition(i)) {
-      if (current != '-') {
-        return {};
-      }
-      lowercase[i] = '-';
-    } else {
-      if (strict ? !ascii_islowerhex(current) : !ascii_ishex(current)) {
-        return {};
-      }
-      lowercase[i] = static_cast<char>(ascii_tolower(current));
-    }
-  }
-
-  return lowercase;
-}
-
-}  // namespace
 
 // static
 Uuid Uuid::GenerateRandomV4() {
@@ -91,20 +52,6 @@ Uuid Uuid::FormatRandomDataAsV4Impl(ByteView input) {
   return uuid;
 }
 
-// static
-Uuid Uuid::ParseCaseInsensitive(std::string_view input) {
-  Uuid uuid;
-  uuid.lowercase_ = GetCanonicalUuidInternal(input, /*strict=*/false);
-  return uuid;
-}
-
-// static
-Uuid Uuid::ParseLowercase(std::string_view input) {
-  Uuid uuid;
-  uuid.lowercase_ = GetCanonicalUuidInternal(input, /*strict=*/true);
-  return uuid;
-}
-
 Uuid::Uuid() = default;
 Uuid::Uuid(const Uuid& other) = default;
 Uuid::Uuid(Uuid&& other) noexcept = default;
@@ -117,10 +64,6 @@ const std::string& Uuid::AsLowercaseString() const {
 
 std::ostream& operator<<(std::ostream& out, const Uuid& uuid) {
   return out << uuid.AsLowercaseString();
-}
-
-size_t UuidHash::operator()(const Uuid& uuid) const {
-  return ComputeAggregateHash(uuid.AsLowercaseString());
 }
 
 }  // namespace openscreen

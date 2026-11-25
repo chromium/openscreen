@@ -61,31 +61,5 @@ TEST(IntegerDivision, DividesPositivesAndRoundsUp) {
   }
 }
 
-TEST(IntegerDivision, DividesAndRoundsNearestInts) {
-  auto* const function_to_test = &DivideRoundingNearest<int>;
-  for (int denom : kDenominators) {
-    TestRangeAboutZero(denom, denom == 3 ? 10 : 14, -3, function_to_test);
-  }
-}
-
-TEST(IntegerDivision, DividesAndRoundsNearestChronoDurations) {
-  auto* const function_to_test =
-      &DivideRoundingNearest<std::chrono::milliseconds>;
-  for (int denom : kDenominators) {
-    TestRangeAboutZero(denom, denom == 3 ? 10 : 14, -3, function_to_test);
-  }
-}
-
-// Assumption: DivideRoundingNearest() is working (tested by the above two
-// tests).
-TEST(IntegerDivision, DividesPositivesAndRoundsNearest) {
-  for (int num = 0; num <= 6; ++num) {
-    for (int denom = 1; denom <= 6; ++denom) {
-      EXPECT_EQ(DivideRoundingNearest(num, denom),
-                DividePositivesRoundingNearest(num, denom));
-    }
-  }
-}
-
 }  // namespace
 }  // namespace openscreen

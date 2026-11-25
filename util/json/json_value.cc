@@ -423,10 +423,6 @@ bool Value::isUInt64() const {
   return false;
 }
 
-bool Value::isIntegral() const {
-  return isInt64() || isUInt64();
-}
-
 bool Value::isDouble() const {
   return isNumeric();
 }
@@ -635,55 +631,6 @@ bool Value::getString(const char** begin, const char** end) const {
     return true;
   }
   return false;
-}
-
-std::optional<int> Value::GetIfInt() const {
-  if (!isInt()) {
-    return std::nullopt;
-  }
-  return asInt();
-}
-
-std::optional<unsigned int> Value::GetIfUInt() const {
-  if (!isUInt()) {
-    return std::nullopt;
-  }
-  return asUInt();
-}
-
-std::optional<int64_t> Value::GetIfInt64() const {
-  if (!isInt64()) {
-    return std::nullopt;
-  }
-  return asInt64();
-}
-
-std::optional<uint64_t> Value::GetIfUInt64() const {
-  if (!isUInt64()) {
-    return std::nullopt;
-  }
-  return asUInt64();
-}
-
-std::optional<double> Value::GetIfDouble() const {
-  if (!isNumeric()) {
-    return std::nullopt;
-  }
-  return asDouble();
-}
-
-std::optional<bool> Value::GetIfBool() const {
-  if (const bool* val = std::get_if<bool>(&storage_)) {
-    return *val;
-  }
-  return std::nullopt;
-}
-
-std::optional<std::string_view> Value::GetIfString() const {
-  if (const std::string* val = std::get_if<std::string>(&storage_)) {
-    return std::string_view(*val);
-  }
-  return std::nullopt;
 }
 
 Value& Value::operator[](ArrayIndex index) {
@@ -947,10 +894,10 @@ std::optional<int> MaybeGetInt(const json::Value& message,
                                const char* first,
                                const char* last) {
   const json::Value* value = message.find(first, last);
-  if (!value) {
+  if (!value || !value->isInt()) {
     return std::nullopt;
   }
-  return value->GetIfInt();
+  return value->asInt();
 }
 
 std::optional<int> MaybeGetInt(const ::Json::Value& message,
@@ -965,7 +912,12 @@ std::optional<int> MaybeGetInt(const ::Json::Value& message,
 }
 
 std::optional<std::string_view> MaybeGetString(const json::Value& message) {
-  return message.GetIfString();
+  const char* begin = nullptr;
+  const char* end = nullptr;
+  if (message.getString(&begin, &end) && begin && end >= begin) {
+    return std::string_view(begin, end - begin);
+  }
+  return std::nullopt;
 }
 
 std::optional<std::string_view> MaybeGetString(const ::Json::Value& message) {
@@ -987,7 +939,7 @@ std::optional<std::string_view> MaybeGetString(const json::Value& message,
   if (!value) {
     return std::nullopt;
   }
-  return value->GetIfString();
+  return MaybeGetString(*value);
 }
 
 std::optional<std::string_view> MaybeGetString(const ::Json::Value& message,

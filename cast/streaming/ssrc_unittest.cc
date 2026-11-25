@@ -4,22 +4,29 @@
 
 #include "cast/streaming/ssrc.h"
 
+#include <algorithm>
+#include <ranges>
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "util/std_util.h"
 
 namespace openscreen::cast {
 namespace {
 
 TEST(SsrcTest, GeneratesUniqueAndPrioritizedSsrcs) {
+  auto sort_and_dedupe = [](std::vector<Ssrc>& v) {
+    std::ranges::sort(v);
+    const auto [first, last] = std::ranges::unique(v);
+    v.erase(first, last);
+  };
+
   std::vector<Ssrc> priority_ssrcs;
   for (int i = 0; i < 3; ++i) {
     priority_ssrcs.push_back(GenerateSsrc(true));
   }
 
   // Three different higher-priority SSRCs should have been generated.
-  SortAndDedupeElements(priority_ssrcs);
+  sort_and_dedupe(priority_ssrcs);
   EXPECT_EQ(3u, priority_ssrcs.size());
 
   std::vector<Ssrc> normal_ssrcs;
@@ -28,7 +35,7 @@ TEST(SsrcTest, GeneratesUniqueAndPrioritizedSsrcs) {
   }
 
   // Three different normal SSRCs should have been generated.
-  SortAndDedupeElements(normal_ssrcs);
+  sort_and_dedupe(normal_ssrcs);
   EXPECT_EQ(3u, normal_ssrcs.size());
 
   // All six SSRCs, together, should be unique.
@@ -36,7 +43,7 @@ TEST(SsrcTest, GeneratesUniqueAndPrioritizedSsrcs) {
   all_ssrcs.insert(all_ssrcs.end(), priority_ssrcs.begin(),
                    priority_ssrcs.end());
   all_ssrcs.insert(all_ssrcs.end(), normal_ssrcs.begin(), normal_ssrcs.end());
-  SortAndDedupeElements(all_ssrcs);
+  sort_and_dedupe(all_ssrcs);
   EXPECT_EQ(6u, all_ssrcs.size());
 
   // ComparePriority() should return values indicating the appropriate

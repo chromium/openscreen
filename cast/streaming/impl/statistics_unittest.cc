@@ -51,7 +51,7 @@ TEST_F(StatisticsTest, SimpleHistogramSerialization) {
       "{\"40-59\":1},{\"60-79\":1},{\"80-99\":3},{\">=100\":1}]";
 
   std::string serialized = test_histogram().ToString();
-  RemoveWhitespace(serialized);
+  std::erase_if(serialized, [](char c) { return ascii_isspace(c); });
   EXPECT_EQ(kExpected, serialized);
 }
 

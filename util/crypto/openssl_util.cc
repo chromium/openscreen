@@ -42,10 +42,6 @@ void EnsureOpenSSLInit() {
   OSP_CHECK(OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS, nullptr) == 1);
 }
 
-void EnsureOpenSSLCleanup() {
-  EVP_cleanup();
-}
-
 void ClearOpenSSLERRStack(const Location& location) {
   if (OSP_DCHECK_IS_ON()) {
     uint32_t error_num = ERR_peek_error();

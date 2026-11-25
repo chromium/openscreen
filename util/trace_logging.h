@@ -47,10 +47,6 @@
   (TRACE_IS_ENABLED(openscreen::TraceCategory::kAny)              \
        ? openscreen::internal::ScopedTraceOperation::current_id() \
        : kEmptyTraceId)
-#define TRACE_ROOT_ID                                          \
-  (TRACE_IS_ENABLED(openscreen::TraceCategory::kAny)           \
-       ? openscreen::internal::ScopedTraceOperation::root_id() \
-       : kEmptyTraceId)
 
 namespace openscreen::internal {
 
@@ -128,57 +124,18 @@ inline std::vector<openscreen::TraceEvent::Argument> ToArgumentArray(
   TRACE_SCOPED2(category, __PRETTY_FUNCTION__, argname, argval, argname_two, \
                 argval_two, ##__VA_ARGS__)
 
-// Asynchronous Trace Macros.
-#define TRACE_ASYNC_START(category, name, ...)                            \
-  TRACE_ASYNC_START_INTERNAL(__LINE__, category, name, ToArgumentArray(), \
-                             ##__VA_ARGS__)
-
-#define TRACE_ASYNC_START1(category, name, argname, argval, ...) \
-  TRACE_ASYNC_START_INTERNAL(__LINE__, category, name,           \
-                             ToArgumentArray(argname, argval), ##__VA_ARGS__)
-
-#define TRACE_ASYNC_START2(category, name, argname, argval, argname_two, \
-                           argval_two, ...)                              \
-  TRACE_ASYNC_START_INTERNAL(                                            \
-      __LINE__, category, name,                                          \
-      ToArgumentArray(argname, argval, argname_two, argval_two),         \
-      ##__VA_ARGS__)
-
-#define TRACE_ASYNC_END(category, id, result)                  \
-  TRACE_IS_ENABLED(category)                                   \
-  ? openscreen::internal::ScopedTraceOperation::TraceAsyncEnd( \
-        __LINE__, __FILE__, id, result)                        \
-  : false
-
 // Flow events are used to link trace events across different threads or
 // processes. Flows are linked by their flow_id.
 // - Flows can span across different trace categories.
-// - If a TRACE_FLOW_BEGIN is missing (e.g. because the embedder didn't
-// instrument it),
-//   the first TRACE_FLOW_STEP encountered will effectively start the flow
-//   visualization.
-#define TRACE_FLOW_BEGIN(category, name, flow_id)          \
-  TRACE_IS_ENABLED(category)                               \
-  ? openscreen::internal::ScopedTraceOperation::TraceFlow( \
-        category, name, __FILE__, __LINE__,                \
-        openscreen::internal::ToFlowId(flow_id),           \
-        openscreen::FlowType::kFlowBegin)                  \
-  : false
-
+// - If a flow begin event is missing (e.g. because the embedder didn't
+//   instrument it), the first TRACE_FLOW_STEP encountered will effectively
+//   start the flow visualization.
 #define TRACE_FLOW_STEP(category, name, flow_id)           \
   TRACE_IS_ENABLED(category)                               \
   ? openscreen::internal::ScopedTraceOperation::TraceFlow( \
         category, name, __FILE__, __LINE__,                \
         openscreen::internal::ToFlowId(flow_id),           \
         openscreen::FlowType::kFlowStep)                   \
-  : false
-
-#define TRACE_FLOW_END(category, name, flow_id)            \
-  TRACE_IS_ENABLED(category)                               \
-  ? openscreen::internal::ScopedTraceOperation::TraceFlow( \
-        category, name, __FILE__, __LINE__,                \
-        openscreen::internal::ToFlowId(flow_id),           \
-        openscreen::FlowType::kFlowEnd)                    \
   : false
 
 #define TRACE_FLOW_BEGIN_WITH_TIME(category, name, flow_id, timestamp) \
@@ -205,15 +162,6 @@ inline std::vector<openscreen::TraceEvent::Argument> ToArgumentArray(
         openscreen::FlowType::kFlowEnd, timestamp)                   \
   : false
 
-#define TRACE_FLOW_DEFAULT_BEGIN(category, flow_id) \
-  TRACE_FLOW_BEGIN(category, __PRETTY_FUNCTION__, flow_id)
-
-#define TRACE_FLOW_DEFAULT_STEP(category, flow_id) \
-  TRACE_FLOW_STEP(category, __PRETTY_FUNCTION__, flow_id)
-
-#define TRACE_FLOW_DEFAULT_END(category, flow_id) \
-  TRACE_FLOW_END(category, __PRETTY_FUNCTION__, flow_id)
-
 #else  // ENABLE_TRACE_LOGGING not defined
 
 namespace openscreen::internal {
@@ -228,7 +176,6 @@ inline void DoNothingForTracing(Args... args) {}
 #define TRACE_SET_HIERARCHY(ids) openscreen::internal::DoNothingForTracing(ids)
 #define TRACE_HIERARCHY openscreen::TraceIdHierarchy::Empty()
 #define TRACE_CURRENT_ID openscreen::kEmptyTraceId
-#define TRACE_ROOT_ID openscreen::kEmptyTraceId
 #define TRACE_SCOPED(category, name, ...) \
   openscreen::internal::DoNothingForTracing(category, name, ##__VA_ARGS__)
 #define TRACE_DEFAULT_SCOPED(category, ...) \
@@ -249,16 +196,7 @@ inline void DoNothingForTracing(Args... args) {}
   TRACE_SCOPED2(category, __PRETTY_FUNCTION__, argname, argval, argname_two, \
                 argval_two, ##__VA_ARGS__)
 
-#define TRACE_ASYNC_START(category, name, ...) \
-  openscreen::internal::DoNothingForTracing(category, name, ##__VA_ARGS__)
-#define TRACE_ASYNC_END(category, id, result) \
-  openscreen::internal::DoNothingForTracing(category, id, result)
-
-#define TRACE_FLOW_BEGIN(category, name, flow_id) \
-  openscreen::internal::DoNothingForTracing(category, name, flow_id)
 #define TRACE_FLOW_STEP(category, name, flow_id) \
-  openscreen::internal::DoNothingForTracing(category, name, flow_id)
-#define TRACE_FLOW_END(category, name, flow_id) \
   openscreen::internal::DoNothingForTracing(category, name, flow_id)
 
 #define TRACE_FLOW_BEGIN_WITH_TIME(category, name, flow_id, timestamp) \
@@ -269,13 +207,6 @@ inline void DoNothingForTracing(Args... args) {}
 
 #define TRACE_FLOW_END_WITH_TIME(category, name, flow_id, timestamp) \
   openscreen::internal::DoNothingForTracing(category, name, flow_id, timestamp)
-
-#define TRACE_FLOW_DEFAULT_BEGIN(category, flow_id) \
-  openscreen::internal::DoNothingForTracing(category, flow_id)
-#define TRACE_FLOW_DEFAULT_STEP(category, flow_id) \
-  openscreen::internal::DoNothingForTracing(category, flow_id)
-#define TRACE_FLOW_DEFAULT_END(category, flow_id) \
-  openscreen::internal::DoNothingForTracing(category, flow_id)
 
 #endif  // defined(ENABLE_TRACE_LOGGING)
 

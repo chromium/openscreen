@@ -73,7 +73,6 @@ TEST(JsonValueDomTest, PrimitiveTypes) {
 
   json::Value int_val(-123);
   EXPECT_TRUE(int_val.isInt());
-  EXPECT_TRUE(int_val.isInt64());
   EXPECT_FALSE(int_val.isUInt());
   EXPECT_EQ(int_val.asInt(), -123);
   EXPECT_EQ(int_val.asInt64(), -123);
@@ -85,7 +84,6 @@ TEST(JsonValueDomTest, PrimitiveTypes) {
 
   json::Value double_val(3.14159);
   EXPECT_TRUE(double_val.isDouble());
-  EXPECT_TRUE(double_val.isNumeric());
   EXPECT_FALSE(double_val.isInt());
   EXPECT_DOUBLE_EQ(double_val.asDouble(), 3.14159);
 
@@ -250,38 +248,13 @@ TEST(JsonValueDomTest, ScalarIterationIsEmpty) {
 }
 
 TEST(JsonValueDomTest, DoubleIntegerBoundaries) {
-  // 2^63 and 2^64: INT64_MAX and UINT64_MAX round up to these as doubles.
-  const json::Value two_to_63(static_cast<double>(INT64_MAX));
-  EXPECT_FALSE(two_to_63.isInt64());
-  EXPECT_TRUE(two_to_63.isUInt64());
-  EXPECT_FALSE(two_to_63.GetIfInt64());
-  EXPECT_EQ(two_to_63.GetIfUInt64(), uint64_t{1} << 63);
-
-  const json::Value two_to_64(static_cast<double>(UINT64_MAX));
-  EXPECT_FALSE(two_to_64.isUInt64());
-  EXPECT_FALSE(two_to_64.GetIfUInt64());
-
-  // Like JsonCpp, -2^63 is rejected, because nearby doubles round to it.
-  const json::Value minus_two_to_63(static_cast<double>(INT64_MIN));
-  EXPECT_FALSE(minus_two_to_63.isInt64());
-  EXPECT_FALSE(minus_two_to_63.isIntegral());
-  EXPECT_FALSE(minus_two_to_63.GetIfInt64());
-
   const json::Value nan_val(std::numeric_limits<double>::quiet_NaN());
   EXPECT_FALSE(nan_val.isInt());
-  EXPECT_FALSE(nan_val.isInt64());
   EXPECT_FALSE(nan_val.isUInt());
-  EXPECT_FALSE(nan_val.isUInt64());
   EXPECT_FALSE(nan_val.asBool());
-  EXPECT_FALSE(nan_val.GetIfInt64());
-  EXPECT_FALSE(nan_val.GetIfUInt64());
 
   const json::Value inf_val(std::numeric_limits<double>::infinity());
-  EXPECT_FALSE(inf_val.isInt64());
-  EXPECT_FALSE(inf_val.isUInt64());
   EXPECT_TRUE(inf_val.asBool());
-  EXPECT_FALSE(inf_val.GetIfInt64());
-  EXPECT_FALSE(inf_val.GetIfUInt64());
 }
 
 TEST(JsonValueDomTest, AsConversionsMatchJsonCpp) {
@@ -315,42 +288,6 @@ TEST(JsonValueDomTest, AsStringOnDoubleMatchesJsonCpp) {
   EXPECT_EQ(json::Value(0.1).asString(), "0.10000000000000001");
   EXPECT_EQ(json::Value(std::numeric_limits<double>::quiet_NaN()).asString(),
             "null");
-}
-
-TEST(JsonValueDomTest, GetIfAccessors) {
-  EXPECT_EQ(json::Value(5).GetIfInt(), 5);
-  EXPECT_EQ(json::Value(5u).GetIfInt(), 5);
-  EXPECT_EQ(json::Value(5.0).GetIfInt(), 5);
-  EXPECT_FALSE(json::Value(5.5).GetIfInt());
-  EXPECT_FALSE(json::Value(int64_t{1} << 40).GetIfInt());
-  EXPECT_FALSE(json::Value(3e9).GetIfInt());
-  EXPECT_FALSE(json::Value("5").GetIfInt());
-  EXPECT_FALSE(json::Value(true).GetIfInt());
-  EXPECT_FALSE(json::Value().GetIfInt());
-
-  EXPECT_EQ(json::Value(3e9).GetIfUInt(), 3000000000u);
-  EXPECT_FALSE(json::Value(-1).GetIfUInt());
-  EXPECT_FALSE(json::Value(-1).GetIfUInt64());
-  EXPECT_FALSE(json::Value(UINT64_MAX).GetIfInt64());
-  EXPECT_EQ(json::Value(UINT64_MAX).GetIfUInt64(), UINT64_MAX);
-  EXPECT_EQ(json::Value(INT64_MIN).GetIfInt64(), INT64_MIN);
-
-  EXPECT_EQ(json::Value(5).GetIfDouble(), 5.0);
-  EXPECT_EQ(json::Value(2.5).GetIfDouble(), 2.5);
-  EXPECT_FALSE(json::Value("2.5").GetIfDouble());
-  EXPECT_FALSE(json::Value(true).GetIfDouble());
-
-  EXPECT_EQ(json::Value(true).GetIfBool(), true);
-  EXPECT_EQ(json::Value(false).GetIfBool(), false);
-  EXPECT_FALSE(json::Value(1).GetIfBool());
-  EXPECT_FALSE(json::Value().GetIfBool());
-
-  const std::string with_nul("a\0b", 3);
-  const json::Value str_val(with_nul);
-  ASSERT_TRUE(str_val.GetIfString());
-  EXPECT_EQ(str_val.GetIfString().value(), with_nul);
-  EXPECT_FALSE(json::Value(1).GetIfString());
-  EXPECT_FALSE(json::Value().GetIfString());
 }
 
 TEST(JsonValueDomDeathTest, AsConversionsAbortLikeJsonCpp) {

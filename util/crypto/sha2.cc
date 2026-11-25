@@ -4,11 +4,11 @@
 
 #include "util/crypto/sha2.h"
 
+#include <openssl/evp.h>
 #include <stddef.h>
 
 #include <memory>
 
-#include "util/crypto/secure_hash.h"
 #include "util/std_util.h"
 
 namespace openscreen {

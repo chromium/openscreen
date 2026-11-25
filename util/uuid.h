@@ -31,15 +31,6 @@ class Uuid {
   // hexadecimal values "a" through "f" are output as lower case characters.
   static Uuid GenerateRandomV4();
 
-  // Returns a valid Uuid if the input string conforms to the Uuid format, and
-  // an invalid Uuid otherwise. Accepts both lower case and upper case hex
-  // characters.
-  static Uuid ParseCaseInsensitive(std::string_view input);
-
-  // Similar to ParseCaseInsensitive(), but all hexadecimal values "a" through
-  // "f" must be lower case characters.
-  static Uuid ParseLowercase(std::string_view input);
-
   // Constructs an invalid Uuid.
   Uuid();
 
@@ -51,8 +42,7 @@ class Uuid {
   bool is_valid() const { return !lowercase_.empty(); }
 
   // Returns the Uuid in a lowercase string format if it is valid, and an empty
-  // string otherwise. The returned value is guaranteed to be parsed by
-  // ParseLowercase().
+  // string otherwise.
   const std::string& AsLowercaseString() const;
 
   // Invalid Uuids are equal.
@@ -65,12 +55,6 @@ class Uuid {
 
   // The lowercase form of the Uuid. Empty for invalid Uuids.
   std::string lowercase_;
-};
-
-// For runtime usage only. Do not store the result of this hash, as it may
-// change in the future.
-struct UuidHash {
-  size_t operator()(const Uuid& uuid) const;
 };
 
 // Stream operator so Uuid objects can be used in logging statements.
