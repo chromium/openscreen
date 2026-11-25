@@ -9,7 +9,7 @@
 #include "cast/streaming/impl/statistics_common.h"
 #include "gtest/gtest.h"
 #include "platform/api/time.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "platform/test/fake_clock.h"
 #include "platform/test/fake_task_runner.h"
 #include "util/chrono_helpers.h"

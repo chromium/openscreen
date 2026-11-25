@@ -5,9 +5,9 @@
 #include "util/bit_vector.h"
 
 #include <algorithm>
+#include <span>
 
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
 
 namespace openscreen {
 namespace {
@@ -24,12 +24,12 @@ const size_t kTestSizes[] = {0,  1,  2,  3,  5,  7,  11, 13, 17,  19,
 
 // Returns a subspan of `kTestSizes` that contains all values in the range
 // [first,last].
-Span<const size_t> GetTestSizesInRange(size_t first, size_t last) {
+std::span<const size_t> GetTestSizesInRange(size_t first, size_t last) {
   const auto begin =
       std::lower_bound(std::cbegin(kTestSizes), std::cend(kTestSizes), first);
   const auto end =
       std::upper_bound(std::cbegin(kTestSizes), std::cend(kTestSizes), last);
-  return Span<const size_t>(&*begin, std::distance(begin, end));
+  return std::span<const size_t>(&*begin, std::distance(begin, end));
 }
 
 // Returns true if an infinitely-repeating `pattern` has a bit set at the given

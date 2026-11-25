@@ -6,7 +6,7 @@
 
 #include "cast/streaming/impl/sender_report_parser.h"
 #include "platform/api/time.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   using openscreen::cast::RtcpSenderReport;

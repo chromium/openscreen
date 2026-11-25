@@ -12,6 +12,7 @@ openscreen_source_set("base") {
   defines = []
   visibility += [ "*" ]
   public = [
+    "base/byte_span.h",
     "base/error.h",
     "base/interface_info.h",
     "base/ip_address.h",

@@ -8,7 +8,7 @@
 #include <memory>
 #include <utility>
 
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/osp_logging.h"
 
 namespace openscreen::osp {

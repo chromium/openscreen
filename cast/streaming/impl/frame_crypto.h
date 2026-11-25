@@ -13,7 +13,7 @@
 
 #include "cast/streaming/public/encoded_frame.h"
 #include "openssl/aes.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen::cast {
 

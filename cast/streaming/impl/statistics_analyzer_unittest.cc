@@ -6,11 +6,11 @@
 
 #include <cstdint>
 #include <numeric>
+#include <span>
 
 #include "cast/streaming/public/statistics.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
 #include "platform/test/fake_clock.h"
 #include "platform/test/fake_task_runner.h"
 #include "util/chrono_helpers.h"
@@ -78,7 +78,7 @@ void ExpectStatEq(SenderStats::StatisticsList stats_list,
 // of events matches for both vectors.
 void ExpectHistoBuckets(const SenderStats::HistogramsList& actual_buckets_list,
                         HistogramType key,
-                        const Span<const int> expected_buckets) {
+                        const std::span<const int> expected_buckets) {
   const std::vector<int>& actual_buckets =
       actual_buckets_list[static_cast<int>(key)].buckets;
 

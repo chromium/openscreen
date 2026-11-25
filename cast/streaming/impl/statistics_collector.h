@@ -9,7 +9,7 @@
 
 #include "cast/streaming/impl/statistics_common.h"
 #include "platform/api/time.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen::cast {
 

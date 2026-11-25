@@ -5,7 +5,7 @@
 #include "cast/streaming/impl/packet_util.h"
 
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen::cast {
 namespace {

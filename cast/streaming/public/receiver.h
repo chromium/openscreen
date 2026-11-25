@@ -11,8 +11,8 @@
 #include "cast/streaming/public/session_config.h"
 #include "cast/streaming/ssrc.h"
 #include "platform/api/time.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/error.h"
-#include "platform/base/span.h"
 
 namespace openscreen::cast {
 

@@ -6,7 +6,7 @@
 #include <cstdint>
 
 #include "cast/common/channel/message_framer.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   openscreen::cast::message_serialization::TryDeserialize(

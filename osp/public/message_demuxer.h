@@ -11,8 +11,8 @@
 
 #include "osp/msgs/osp_messages.h"
 #include "platform/api/time.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/error.h"
-#include "platform/base/span.h"
 #include "util/raw_ptr.h"
 
 namespace openscreen::osp {

@@ -7,7 +7,7 @@
 #include "cast/streaming/impl/sender_report_builder.h"
 #include "cast/streaming/impl/sender_report_parser.h"
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen::cast {
 namespace {

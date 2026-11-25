@@ -26,7 +26,7 @@
 #include "cast/streaming/rtp_time.h"
 #include "cast/streaming/sender_packet_router.h"
 #include "platform/api/time.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/bit_vector.h"
 #include "util/raw_ptr.h"
 #include "util/raw_ref.h"

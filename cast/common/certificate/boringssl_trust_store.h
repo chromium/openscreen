@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "cast/common/public/trust_store.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen::cast {
 

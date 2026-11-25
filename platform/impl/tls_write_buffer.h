@@ -8,7 +8,7 @@
 #include <atomic>
 #include <memory>
 
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen {
 

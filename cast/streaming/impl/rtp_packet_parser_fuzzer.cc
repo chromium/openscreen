@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "cast/streaming/impl/rtp_packet_parser.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   using openscreen::cast::RtpPacketParser;

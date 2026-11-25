@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "cast/common/channel/cast_message_handler.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/raw_ref.h"
 
 namespace openscreen::cast {

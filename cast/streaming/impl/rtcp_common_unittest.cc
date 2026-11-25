@@ -9,7 +9,7 @@
 
 #include "gtest/gtest.h"
 #include "platform/api/time.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/chrono_helpers.h"
 
 namespace openscreen::cast {

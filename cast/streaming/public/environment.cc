@@ -9,7 +9,7 @@
 
 #include "cast/streaming/impl/rtp_defines.h"
 #include "platform/api/task_runner.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/osp_logging.h"
 
 namespace openscreen::cast {

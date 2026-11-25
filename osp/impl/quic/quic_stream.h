@@ -8,7 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/raw_ref.h"
 
 namespace openscreen::osp {

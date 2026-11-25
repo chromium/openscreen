@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "cast/common/public/parsed_certificate.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/error.h"
-#include "platform/base/span.h"
 
 namespace openscreen::cast {
 

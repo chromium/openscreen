@@ -9,8 +9,8 @@
 #include <type_traits>
 
 #include "osp/msgs/osp_messages.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/error.h"
-#include "platform/base/span.h"
 #include "util/osp_logging.h"
 #include "util/raw_ptr.h"
 

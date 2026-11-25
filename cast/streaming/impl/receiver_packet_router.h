@@ -13,7 +13,7 @@
 #include "cast/streaming/impl/rtp_defines.h"
 #include "cast/streaming/public/environment.h"
 #include "cast/streaming/ssrc.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/flat_map.h"
 #include "util/raw_ptr.h"
 #include "util/raw_ref.h"

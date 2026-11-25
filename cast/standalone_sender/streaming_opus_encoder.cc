@@ -10,7 +10,7 @@
 #include <chrono>
 #include <utility>
 
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/chrono_helpers.h"
 
 namespace openscreen::cast {

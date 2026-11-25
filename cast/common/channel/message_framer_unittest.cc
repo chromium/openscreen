@@ -12,7 +12,7 @@
 
 #include "cast/common/channel/proto/cast_channel.pb.h"
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/big_endian.h"
 #include "util/std_util.h"
 

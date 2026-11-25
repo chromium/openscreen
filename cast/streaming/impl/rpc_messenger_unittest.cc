@@ -12,7 +12,7 @@
 #include "cast/streaming/remoting.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 using testing::_;
 using testing::Return;

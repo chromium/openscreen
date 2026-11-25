@@ -12,7 +12,7 @@
 
 #include "osp/impl/presentation/presentation_utils.h"
 #include "osp/public/network_service_manager.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/chrono_helpers.h"
 #include "util/osp_logging.h"
 

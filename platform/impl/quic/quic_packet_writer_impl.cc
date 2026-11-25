@@ -6,7 +6,7 @@
 
 #include <limits>
 
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "platform/impl/quic/quic_utils.h"
 #include "util/osp_logging.h"
 

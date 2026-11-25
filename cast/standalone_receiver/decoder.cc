@@ -11,7 +11,7 @@
 #include <thread>
 
 #include "cast/streaming/public/frame_trace_ids.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/osp_logging.h"
 #include "util/std_util.h"
 #include "util/trace_logging.h"

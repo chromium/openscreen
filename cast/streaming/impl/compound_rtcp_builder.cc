@@ -10,7 +10,7 @@
 
 #include "cast/streaming/impl/packet_util.h"
 #include "cast/streaming/impl/rtcp_session.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/chrono_helpers.h"
 #include "util/integer_division.h"
 #include "util/osp_logging.h"

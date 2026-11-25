@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen::base64 {
 

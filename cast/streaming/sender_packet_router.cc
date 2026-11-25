@@ -9,7 +9,7 @@
 
 #include "cast/streaming/impl/packet_util.h"
 #include "cast/streaming/public/constants.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/chrono_helpers.h"
 #include "util/osp_logging.h"
 #include "util/saturate_cast.h"

@@ -10,7 +10,7 @@
 #include "cast/streaming/impl/frame_crypto.h"
 #include "cast/streaming/impl/rtp_defines.h"
 #include "cast/streaming/ssrc.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen::cast {
 

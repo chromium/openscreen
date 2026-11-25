@@ -9,7 +9,7 @@
 
 #include "cast/streaming/impl/rtp_defines.h"
 #include "cast/streaming/ssrc.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/big_endian.h"
 #include "util/osp_logging.h"
 

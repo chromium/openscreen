@@ -11,7 +11,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/crypto/random_bytes.h"
 
 namespace openscreen::cast {

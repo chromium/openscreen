@@ -18,7 +18,7 @@
 #include "osp/public/network_service_manager.h"
 #include "osp/public/protocol_connection_server.h"
 #include "osp/public/testing/message_demuxer_test_support.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "platform/test/fake_clock.h"
 #include "platform/test/fake_task_runner.h"
 

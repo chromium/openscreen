@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "cast/standalone_common/ffmpeg_glue.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/big_endian.h"
 #include "util/chrono_helpers.h"
 #include "util/osp_logging.h"

@@ -7,8 +7,8 @@
 
 #include <string_view>
 
+#include "platform/base/byte_span.h"
 #include "platform/base/error.h"
-#include "platform/base/span.h"
 
 namespace openscreen::cast {
 

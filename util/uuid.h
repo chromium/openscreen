@@ -12,7 +12,7 @@
 #include <string>
 #include <string_view>
 
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen {
 

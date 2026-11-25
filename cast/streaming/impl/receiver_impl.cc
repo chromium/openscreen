@@ -11,7 +11,7 @@
 #include "cast/streaming/public/constants.h"
 #include "cast/streaming/public/frame_trace_ids.h"
 #include "cast/streaming/public/session_config.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/trivial_clock_traits.h"
 #include "util/chrono_helpers.h"
 #include "util/osp_logging.h"

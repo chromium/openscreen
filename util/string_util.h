@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 // String query and manipulation utilities.
 //

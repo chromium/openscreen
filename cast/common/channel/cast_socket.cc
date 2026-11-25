@@ -9,7 +9,7 @@
 #include "cast/common/channel/message_framer.h"
 #include "cast/common/channel/message_util.h"
 #include "cast/common/channel/proto/cast_channel.pb.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/osp_logging.h"
 
 namespace openscreen::cast {

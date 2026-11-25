@@ -15,7 +15,7 @@
 #include "cast/streaming/public/environment.h"
 #include "cast/streaming/public/frame_trace_ids.h"
 #include "cast/streaming/public/sender.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/chrono_helpers.h"
 #include "util/osp_logging.h"
 #include "util/saturate_cast.h"

@@ -25,8 +25,8 @@
 #include <string_view>
 
 #include "platform/api/network_interface.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/ip_address.h"
-#include "platform/base/span.h"
 #include "platform/impl/network_interface.h"
 #include "platform/impl/scoped_pipe.h"
 #include "util/osp_logging.h"
@@ -58,7 +58,7 @@ InterfaceInfo::Type GetInterfaceType(const std::string& ifname) {
   // deprecated.  However, it's much easier than using the new nl80211
   // interface for this purpose.  If Wireless Extensions are ever actually
   // removed though, this will need to use nl80211.
-  struct iwreq wr {};
+  struct iwreq wr{};
   static_assert(sizeof(wr.ifr_name) == IFNAMSIZ,
                 "expected size of interface name fields");
   OSP_CHECK_LT(ifname.size(), IFNAMSIZ);
@@ -67,9 +67,9 @@ InterfaceInfo::Type GetInterfaceType(const std::string& ifname) {
   if (ioctl(s.get(), SIOCGIWNAME, &wr) != -1)
     return InterfaceInfo::Type::kWifi;
 
-  struct ethtool_cmd ecmd {};
+  struct ethtool_cmd ecmd{};
   ecmd.cmd = ETHTOOL_GSET;
-  struct ifreq ifr {};
+  struct ifreq ifr{};
   static_assert(sizeof(ifr.ifr_name) == IFNAMSIZ,
                 "expected size of interface name fields");
   OSP_CHECK_LT(ifname.size(), IFNAMSIZ);
@@ -159,11 +159,11 @@ std::vector<InterfaceInfo> GetLinkInfo() {
 
   {
     // nl_pid = 0 for the kernel.
-    struct sockaddr_nl peer {};
+    struct sockaddr_nl peer{};
     peer.nl_family = AF_NETLINK;
     struct {
-      struct nlmsghdr header {};
-      struct ifinfomsg msg {};
+      struct nlmsghdr header{};
+      struct ifinfomsg msg{};
     } request;
 
     request.header.nlmsg_len = sizeof(request);
@@ -172,10 +172,8 @@ std::vector<InterfaceInfo> GetLinkInfo() {
     request.header.nlmsg_seq = 0;
     request.header.nlmsg_pid = 0;
     request.msg.ifi_family = AF_UNSPEC;
-    struct iovec iov {
-      &request, request.header.nlmsg_len
-    };
-    struct msghdr msg {};
+    struct iovec iov{&request, request.header.nlmsg_len};
+    struct msghdr msg{};
     msg.msg_name = &peer;
     msg.msg_namelen = sizeof(peer);
     msg.msg_iov = &iov;
@@ -193,11 +191,9 @@ std::vector<InterfaceInfo> GetLinkInfo() {
   std::vector<InterfaceInfo> info_list;
   {
     char buf[kNetlinkRecvmsgBufSize]{};
-    struct iovec iov {
-      buf, sizeof(buf)
-    };
-    struct sockaddr_nl source_address {};
-    struct msghdr msg {};
+    struct iovec iov{buf, sizeof(buf)};
+    struct sockaddr_nl source_address{};
+    struct msghdr msg{};
     struct nlmsghdr* netlink_header = nullptr;
 
     msg.msg_name = &source_address;
@@ -265,11 +261,11 @@ void PopulateSubnetsOrClearList(std::vector<InterfaceInfo>& info_list) {
 
   {
     // nl_pid = 0 for the kernel.
-    struct sockaddr_nl peer {};
+    struct sockaddr_nl peer{};
     peer.nl_family = AF_NETLINK;
     struct {
-      struct nlmsghdr header {};
-      struct ifaddrmsg msg {};
+      struct nlmsghdr header{};
+      struct ifaddrmsg msg{};
     } request;
 
     request.header.nlmsg_len = sizeof(request);
@@ -278,10 +274,8 @@ void PopulateSubnetsOrClearList(std::vector<InterfaceInfo>& info_list) {
     request.header.nlmsg_seq = 1;
     request.header.nlmsg_pid = 0;
     request.msg.ifa_family = AF_UNSPEC;
-    struct iovec iov {
-      &request, request.header.nlmsg_len
-    };
-    struct msghdr msg {};
+    struct iovec iov{&request, request.header.nlmsg_len};
+    struct msghdr msg{};
     msg.msg_name = &peer;
     msg.msg_namelen = sizeof(peer);
     msg.msg_iov = &iov;
@@ -298,11 +292,9 @@ void PopulateSubnetsOrClearList(std::vector<InterfaceInfo>& info_list) {
 
   {
     char buf[kNetlinkRecvmsgBufSize]{};
-    struct iovec iov {
-      buf, sizeof(buf)
-    };
-    struct sockaddr_nl source_address {};
-    struct msghdr msg {};
+    struct iovec iov{buf, sizeof(buf)};
+    struct sockaddr_nl source_address{};
+    struct msghdr msg{};
     struct nlmsghdr* netlink_header = nullptr;
 
     msg.msg_name = &source_address;

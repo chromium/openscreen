@@ -10,7 +10,7 @@
 #include "openssl/crypto.h"
 #include "openssl/err.h"
 #include "openssl/rand.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/big_endian.h"
 #include "util/crypto/openssl_util.h"
 #include "util/crypto/random_bytes.h"

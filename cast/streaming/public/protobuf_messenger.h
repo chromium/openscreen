@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "google/protobuf/message_lite.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/osp_logging.h"
 
 namespace openscreen::cast {

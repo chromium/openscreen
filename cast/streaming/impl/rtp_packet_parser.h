@@ -12,7 +12,7 @@
 #include "cast/streaming/public/frame_id.h"
 #include "cast/streaming/rtp_time.h"
 #include "cast/streaming/ssrc.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 namespace openscreen::cast {
 

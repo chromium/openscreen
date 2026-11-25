@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <span>
 
 #include "cast/streaming/impl/compound_rtcp_parser.h"
 #include "cast/streaming/impl/rtcp_session.h"
@@ -329,7 +330,7 @@ TEST_F(CompoundRtcpBuilderTest, WithEverythingThatCanFit) {
             std::equal(parsed_acks.begin(), parsed_acks.end(), acks.begin()));
       });
   EXPECT_CALL(*(client()), OnReceiverIsMissingPackets(_))
-      .WillOnce([&](Span<const PacketNack> parsed_nacks) {
+      .WillOnce([&](std::span<const PacketNack> parsed_nacks) {
         // All of the 48 NACKs provided should be present.
         ASSERT_EQ(kFewerNackCount, static_cast<int>(parsed_nacks.size()));
         EXPECT_TRUE(std::equal(parsed_nacks.begin(), parsed_nacks.end(),
@@ -355,7 +356,7 @@ TEST_F(CompoundRtcpBuilderTest, WithEverythingThatCanFit) {
         EXPECT_EQ(acks, parsed_acks);
       });
   EXPECT_CALL(*(client()), OnReceiverIsMissingPackets(_))
-      .WillOnce([&](Span<const PacketNack> parsed_nacks) {
+      .WillOnce([&](std::span<const PacketNack> parsed_nacks) {
         // Only the first 46 NACKs provided should be present.
         ASSERT_EQ(kEvenFewerNackCount, static_cast<int>(parsed_nacks.size()));
         EXPECT_TRUE(std::equal(parsed_nacks.begin(), parsed_nacks.end(),

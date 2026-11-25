@@ -13,7 +13,7 @@
 #include "cast/standalone_common/ffmpeg_glue.h"
 #include "cast/streaming/public/frame_id.h"
 #include "cast/streaming/ssrc.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/raw_ptr.h"
 
 namespace openscreen::cast {

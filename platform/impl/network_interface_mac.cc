@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "platform/api/network_interface.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/ip_address.h"
-#include "platform/base/span.h"
 #include "platform/impl/network_interface.h"
 #include "platform/impl/scoped_pipe.h"
 #include "platform/impl/socket_address_posix.h"

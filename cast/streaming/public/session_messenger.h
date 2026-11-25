@@ -16,7 +16,7 @@
 #include "cast/streaming/public/receiver_message.h"
 #include "cast/streaming/sender_message.h"
 #include "platform/api/task_runner.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/flat_map.h"
 #include "util/json/json_value.h"
 #include "util/raw_ref.h"

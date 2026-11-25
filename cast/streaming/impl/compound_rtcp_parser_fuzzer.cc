@@ -7,7 +7,7 @@
 #include "cast/streaming/impl/compound_rtcp_parser.h"
 #include "cast/streaming/impl/rtcp_session.h"
 #include "cast/streaming/public/frame_id.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   using openscreen::cast::CompoundRtcpParser;

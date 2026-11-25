@@ -64,7 +64,7 @@ being needed for some third party libraries, e.g. protobuf.
     `using FooId = std::string` in foo.h.
 
   - Case by case exceptions may be made for readability/convenience,
-    e.g. as in `platform/base/span.h`.
+    e.g. as in `platform/base/byte_span.h`.
 
 ## Initialization
 

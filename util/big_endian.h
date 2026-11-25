@@ -15,7 +15,7 @@
 #include <span>
 #include <type_traits>
 
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "util/osp_logging.h"
 
 namespace openscreen {
@@ -131,8 +131,8 @@ class BigEndianBuffer {
     return true;
   }
 
-  Span<T> buffer() const { return buffer_; }
-  Span<T> remaining_span() const { return buffer_.subspan(offset_); }
+  std::span<T> buffer() const { return buffer_; }
+  std::span<T> remaining_span() const { return buffer_.subspan(offset_); }
   // TODO(crbug.com/520101123): Remove unsafe raw pointer methods once
   // MdnsReader and MdnsWriter are fully spanified in follow-up CLs.
   T* begin() const { return buffer_.data(); }
@@ -141,14 +141,14 @@ class BigEndianBuffer {
   size_t remaining() const { return buffer_.size() - offset_; }
   size_t offset() const { return offset_; }
 
-  explicit BigEndianBuffer(Span<T> buffer) : buffer_(buffer) {}
+  explicit BigEndianBuffer(std::span<T> buffer) : buffer_(buffer) {}
   // TODO(crbug.com/520101123): Remove unsafe raw pointer and length methods.
   BigEndianBuffer(T* buffer, size_t length) : buffer_(buffer, length) {}
   BigEndianBuffer(const BigEndianBuffer&) = delete;
   BigEndianBuffer& operator=(const BigEndianBuffer&) = delete;
 
  private:
-  Span<T> buffer_;
+  std::span<T> buffer_;
   size_t offset_ = 0;
 };
 

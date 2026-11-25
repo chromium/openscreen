@@ -12,9 +12,9 @@
 
 #include "build/build_config.h"
 #include "platform/api/network_interface.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/error.h"
 #include "platform/base/ip_address.h"
-#include "platform/base/span.h"
 #include "platform/base/udp_packet.h"
 
 #if BUILDFLAG(IS_WIN)

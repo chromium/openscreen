@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -36,7 +37,7 @@
 #include "cast/streaming/testing/simple_socket_subscriber.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "platform/base/span.h"
+#include "platform/base/byte_span.h"
 #include "platform/test/fake_clock.h"
 #include "platform/test/fake_task_runner.h"
 #include "util/alarm.h"
@@ -471,7 +472,7 @@ class SenderTest : public testing::Test {
   // Confirms that all `sent_frames` exist in `received_frames`, with identical
   // data and metadata.
   static void ExpectFramesReceivedCorrectly(
-      Span<EncodedFrameWithBuffer> sent_frames,
+      std::span<EncodedFrameWithBuffer> sent_frames,
       const std::map<FrameId, EncodedFrameWithBuffer> received_frames) {
     ASSERT_EQ(sent_frames.size(), received_frames.size());
 

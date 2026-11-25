@@ -16,8 +16,8 @@
 #include "osp/public/network_metrics.h"
 #include "osp/public/network_service_manager.h"
 #include "osp/public/testing/message_demuxer_test_support.h"
+#include "platform/base/byte_span.h"
 #include "platform/base/error.h"
-#include "platform/base/span.h"
 #include "platform/test/fake_clock.h"
 #include "platform/test/fake_task_runner.h"
 #include "util/raw_ptr.h"
@@ -69,13 +69,12 @@ class QuicServerTest : public Test {
                                           &mock_connect_request_callback);
     std::unique_ptr<ProtocolConnection> stream;
     EXPECT_CALL(mock_connect_request_callback, OnConnectSucceed(_, _, _))
-        .WillOnce(
-            [this](uint64_t request_id, std::string_view instance_name,
-                   uint64_t instance_id) {
-              client_connection_ =
-                  quic_bridge_.GetQuicClient()->CreateProtocolConnection(
-                      instance_id);
-            });
+        .WillOnce([this](uint64_t request_id, std::string_view instance_name,
+                         uint64_t instance_id) {
+          client_connection_ =
+              quic_bridge_.GetQuicClient()->CreateProtocolConnection(
+                  instance_id);
+        });
     EXPECT_CALL(quic_bridge_.mock_server_observer(),
                 OnIncomingConnectionMock(_))
         .WillOnce([&stream](std::unique_ptr<ProtocolConnection>& connection) {
