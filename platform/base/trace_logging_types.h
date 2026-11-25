@@ -35,10 +35,6 @@ struct TraceIdHierarchy {
     return {kEmptyTraceId, kEmptyTraceId, kEmptyTraceId};
   }
 
-  bool HasCurrent() const { return current != kUnsetTraceId; }
-  bool HasParent() const { return parent != kUnsetTraceId; }
-  bool HasRoot() const { return root != kUnsetTraceId; }
-
   std::string ToString() const;
 };
 

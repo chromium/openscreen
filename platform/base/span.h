@@ -15,8 +15,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "platform/base/type_util.h"
-
 namespace openscreen {
 
 // In Open Screen code, use these aliases for the most common types of Spans.

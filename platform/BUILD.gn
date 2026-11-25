@@ -23,7 +23,6 @@ openscreen_source_set("base") {
     "base/trace_logging_activation.h",
     "base/trace_logging_types.h",
     "base/trivial_clock_traits.h",
-    "base/type_util.h",
     "base/udp_packet.h",
   ]
 

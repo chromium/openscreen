@@ -36,11 +36,6 @@ class Location {
     return program_counter_ == other.program_counter_;
   }
 
-  // The address of the code generating this Location object. Should always be
-  // valid except for default initialized Location objects, which will be
-  // nullptr.
-  const void* program_counter() const { return program_counter_; }
-
   // Converts to the most user-readable form possible. This will return
   // "pc:<hex address>".
   std::string ToString() const;
@@ -55,8 +50,6 @@ class Location {
 };
 
 std::ostream& operator<<(std::ostream& out, const Location& location);
-
-const void* GetProgramCounter();
 
 #define CURRENT_LOCATION ::openscreen::Location::CreateFromHere()
 

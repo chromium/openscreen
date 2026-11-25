@@ -14,23 +14,18 @@ using ::testing::StartsWith;
 TEST(LocationTest, DefaultInitializedLocationIsNullptr) {
   const Location loc;
 
-  EXPECT_EQ(nullptr, loc.program_counter());
   EXPECT_EQ("pc:nullptr", loc.ToString());
 }
 
 TEST(LocationTest, ExpresslyInitializedLocationIsValid) {
   const void* void_ptr = reinterpret_cast<void*>(0x1337);
   const Location loc(void_ptr);
-  EXPECT_EQ(void_ptr, loc.program_counter());
   EXPECT_EQ("pc:0x1337", loc.ToString());
 }
 
 TEST(LocationTest, LocationFromHereIsValid) {
   const Location loc_from_here = openscreen::Location::CreateFromHere();
   const Location loc_from_here_macro = CURRENT_LOCATION;
-
-  EXPECT_NE(nullptr, loc_from_here.program_counter());
-  EXPECT_NE(nullptr, loc_from_here_macro.program_counter());
 
 // Some platforms have only limited Regex support, so we cannot have as
 // thorough a test on those platforms.

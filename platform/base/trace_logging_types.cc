@@ -11,9 +11,9 @@ namespace openscreen {
 
 std::string TraceIdHierarchy::ToString() const {
   std::stringstream ss;
-  ss << "[" << std::hex << (HasRoot() ? root : 0) << ":"
-     << (HasParent() ? parent : 0) << ":" << (HasCurrent() ? current : 0)
-     << std::dec << "]";
+  ss << "[" << std::hex << (root != kUnsetTraceId ? root : 0) << ":"
+     << (parent != kUnsetTraceId ? parent : 0) << ":"
+     << (current != kUnsetTraceId ? current : 0) << std::dec << "]";
 
   return ss.str();
 }
